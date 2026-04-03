@@ -3,13 +3,13 @@ import {
   LLMProviderView,
   ModelConfiguration,
 } from "@/interfaces/llm";
+import { deepEqual } from "@/lib/deepEqual";
 import {
   LLM_ADMIN_URL,
   LLM_PROVIDERS_ADMIN_URL,
 } from "@/lib/llmConfig/constants";
 import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
 import { toast } from "@/hooks/useToast";
-import isEqual from "lodash/isEqual";
 import { parseAzureTargetUri } from "@/lib/azureTargetUri";
 import {
   track,
@@ -94,7 +94,7 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
     );
   }
 
-  const customConfigChanged = !isEqual(
+  const customConfigChanged = !deepEqual(
     values.custom_config,
     initialValues.custom_config
   );
@@ -115,7 +115,7 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
   };
 
   // Test the configuration
-  if (!isEqual(finalValues, initialValues)) {
+  if (!deepEqual(finalValues, initialValues)) {
     setIsTesting(true);
 
     const response = await fetch("/api/admin/llm/test", {
