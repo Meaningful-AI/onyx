@@ -10,7 +10,7 @@ import (
 
 const (
 	EnvServerURL      = "ONYX_SERVER_URL"
-	EnvInternalURL    = "ONYX_INTERNAL_URL"
+	EnvAPIServerURL   = "ONYX_API_SERVER_URL"
 	EnvAPIKey         = "ONYX_API_KEY"
 	EnvAgentID        = "ONYX_PERSONA_ID"
 	EnvSSHHostKey     = "ONYX_SSH_HOST_KEY"
@@ -114,7 +114,11 @@ func applyEnvOverrides(cfg *OnyxCliConfig) {
 	if v := os.Getenv(EnvServerURL); v != "" {
 		cfg.ServerURL = v
 	}
-	if v := os.Getenv(EnvInternalURL); v != "" {
+	// ONYX_API_SERVER_URL takes precedence; fall back to INTERNAL_URL
+	// (the env var used by the web server) for compatibility.
+	if v := os.Getenv(EnvAPIServerURL); v != "" {
+		cfg.InternalURL = v
+	} else if v := os.Getenv("INTERNAL_URL"); v != "" {
 		cfg.InternalURL = v
 	}
 	if v := os.Getenv(EnvAPIKey); v != "" {

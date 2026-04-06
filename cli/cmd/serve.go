@@ -50,16 +50,14 @@ func sessionEnv(s ssh.Session, key string) string {
 	return ""
 }
 
-func validateAPIKey(serverURL string, apiKey string) error {
+func validateAPIKey(serverCfg config.OnyxCliConfig, apiKey string) error {
 	trimmedKey := strings.TrimSpace(apiKey)
 	if len(trimmedKey) > maxAPIKeyLength {
 		return fmt.Errorf("API key is too long (max %d characters)", maxAPIKeyLength)
 	}
 
-	cfg := config.OnyxCliConfig{
-		ServerURL: serverURL,
-		APIKey:    trimmedKey,
-	}
+	cfg := serverCfg
+	cfg.APIKey = trimmedKey
 	client := api.NewClient(cfg)
 	ctx, cancel := context.WithTimeout(context.Background(), apiKeyValidationTimeout)
 	defer cancel()
@@ -83,7 +81,7 @@ type authValidatedMsg struct {
 
 type authModel struct {
 	input     textinput.Model
-	serverURL string
+	serverCfg config.OnyxCliConfig
 	state     authState
 	apiKey    string // set on successful validation
 	errMsg    string
@@ -91,7 +89,7 @@ type authModel struct {
 	aborted   bool
 }
 
-func newAuthModel(serverURL, initialErr string) authModel {
+func newAuthModel(serverCfg config.OnyxCliConfig, initialErr string) authModel {
 	ti := textinput.New()
 	ti.Prompt = "  API Key: "
 	ti.EchoMode = textinput.EchoPassword
@@ -102,7 +100,7 @@ func newAuthModel(serverURL, initialErr string) authModel {
 
 	return authModel{
 		input:     ti,
-		serverURL: serverURL,
+		serverCfg: serverCfg,
 		errMsg:    initialErr,
 	}
 }
@@ -138,9 +136,9 @@ func (m authModel) Update(msg tea.Msg) (authModel, tea.Cmd) {
 			}
 			m.state = authValidating
 			m.errMsg = ""
-			serverURL := m.serverURL
+			serverCfg := m.serverCfg
 			return m, func() tea.Msg {
-				return authValidatedMsg{key: key, err: validateAPIKey(serverURL, key)}
+				return authValidatedMsg{key: key, err: validateAPIKey(serverCfg, key)}
 			}
 		}
 
@@ -171,12 +169,13 @@ func (m authModel) Update(msg tea.Msg) (authModel, tea.Cmd) {
 }
 
 func (m authModel) View() string {
-	settingsURL := strings.TrimRight(m.serverURL, "/") + "/app/settings/accounts-access"
+	serverURL := m.serverCfg.ServerURL
+	settingsURL := strings.TrimRight(serverURL, "/") + "/app/settings/accounts-access"
 
 	var b strings.Builder
 	b.WriteString("\n")
 	b.WriteString("  \x1b[1;35mOnyx CLI\x1b[0m\n")
-	b.WriteString("  \x1b[90m" + m.serverURL + "\x1b[0m\n")
+	b.WriteString("  \x1b[90m" + serverURL + "\x1b[0m\n")
 	b.WriteString("\n")
 	b.WriteString("  Generate an API key at:\n")
 	b.WriteString("  \x1b[4;34m" + settingsURL + "\x1b[0m\n")
@@ -215,7 +214,7 @@ type serveModel struct {
 
 func newServeModel(serverCfg config.OnyxCliConfig, initialErr string) serveModel {
 	return serveModel{
-		auth:      newAuthModel(serverCfg.ServerURL, initialErr),
+		auth:      newAuthModel(serverCfg, initialErr),
 		serverCfg: serverCfg,
 	}
 }
@@ -238,11 +237,8 @@ func (m serveModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		if m.auth.apiKey != "" {
-			cfg := config.OnyxCliConfig{
-				ServerURL:      m.serverCfg.ServerURL,
-				APIKey:         m.auth.apiKey,
-				DefaultAgentID: m.serverCfg.DefaultAgentID,
-			}
+			cfg := m.serverCfg
+			cfg.APIKey = m.auth.apiKey
 			m.tui = tui.NewModel(cfg)
 			m.authed = true
 			w, h := m.width, m.height
@@ -344,7 +340,7 @@ environment variable (the --host-key flag takes precedence).`,
 				var envErr string
 
 				if apiKey != "" {
-					if err := validateAPIKey(serverCfg.ServerURL, apiKey); err != nil {
+					if err := validateAPIKey(serverCfg, apiKey); err != nil {
 						envErr = fmt.Sprintf("ONYX_API_KEY from SSH environment is invalid: %s", err.Error())
 						apiKey = ""
 					}
@@ -352,11 +348,8 @@ environment variable (the --host-key flag takes precedence).`,
 
 				if apiKey != "" {
 					// Env key is valid — go straight to the TUI.
-					cfg := config.OnyxCliConfig{
-						ServerURL:      serverCfg.ServerURL,
-						APIKey:         apiKey,
-						DefaultAgentID: serverCfg.DefaultAgentID,
-					}
+					cfg := serverCfg
+					cfg.APIKey = apiKey
 					return tui.NewModel(cfg), []tea.ProgramOption{
 						tea.WithAltScreen(),
 						tea.WithMouseCellMotion(),
@@ -460,7 +453,7 @@ environment variable (the --host-key flag takes precedence).`,
 	cmd.Flags().StringVar(&serverURL, "server-url", "",
 		"Onyx server URL (overrides config file and $"+config.EnvServerURL+")")
 	cmd.Flags().StringVar(&apiServerURL, "api-server-url", "",
-		"API server URL for direct access, bypassing nginx (overrides $"+config.EnvInternalURL+")")
+		"API server URL for direct access, bypassing nginx (overrides $"+config.EnvAPIServerURL+")")
 
 	return cmd
 }

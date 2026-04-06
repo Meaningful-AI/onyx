@@ -16,6 +16,7 @@ import (
 
 	"github.com/onyx-dot-app/onyx/cli/internal/config"
 	"github.com/onyx-dot-app/onyx/cli/internal/models"
+	log "github.com/sirupsen/logrus"
 )
 
 // Client is the Onyx API client.
@@ -34,6 +35,11 @@ type Client struct {
 // requests go through the nginx proxy at ServerURL which strips /api.
 func NewClient(cfg config.OnyxCliConfig) *Client {
 	baseURL := apiBaseURL(cfg)
+	log.WithFields(log.Fields{
+		"server_url":   cfg.ServerURL,
+		"internal_url": cfg.InternalURL,
+		"base_url":     baseURL,
+	}).Debug("creating API client")
 	var transport *http.Transport
 	if t, ok := http.DefaultTransport.(*http.Transport); ok {
 		transport = t.Clone()
@@ -73,7 +79,9 @@ func (c *Client) UpdateConfig(cfg config.OnyxCliConfig) {
 }
 
 func (c *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
+	url := c.baseURL + path
+	log.WithFields(log.Fields{"method": method, "url": url}).Debug("API request")
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +113,16 @@ func (c *Client) doJSON(ctx context.Context, method, path string, reqBody any, r
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		log.WithError(err).WithField("url", req.URL.String()).Debug("API request failed")
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	log.WithFields(log.Fields{"url": req.URL.String(), "status": resp.StatusCode}).Debug("API response")
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBody, _ := io.ReadAll(resp.Body)
+		log.WithFields(log.Fields{"status": resp.StatusCode, "body": string(respBody)}).Debug("API error response")
 		return &OnyxAPIError{StatusCode: resp.StatusCode, Detail: string(respBody)}
 	}
 
@@ -128,6 +140,10 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	if reachURL == "" {
 		reachURL = c.baseURL
 	}
+	log.WithFields(log.Fields{
+		"reach_url": reachURL,
+		"base_url":  c.baseURL,
+	}).Debug("testing connection — step 1: reachability")
 	req, err := http.NewRequestWithContext(ctx, "GET", reachURL+"/", nil)
 	if err != nil {
 		return fmt.Errorf("cannot connect to %s: %w", reachURL, err)
@@ -135,8 +151,10 @@ func (c *Client) TestConnection(ctx context.Context) error {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		log.WithError(err).Debug("reachability check failed")
 		return fmt.Errorf("cannot connect to %s — is the server running?", reachURL)
 	}
+	log.WithField("status", resp.StatusCode).Debug("reachability check response")
 	_ = resp.Body.Close()
 
 	serverHeader := strings.ToLower(resp.Header.Get("Server"))
@@ -149,6 +167,7 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	}
 
 	// Step 2: Authenticated check
+	log.WithField("url", c.baseURL+"/me").Debug("testing connection — step 2: auth check")
 	req2, err := c.newRequest(ctx, "GET", "/me", nil)
 	if err != nil {
 		return fmt.Errorf("server reachable but API error: %w", err)
