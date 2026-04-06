@@ -35,6 +35,8 @@ import {
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import { toast } from "@/hooks/useToast";
+import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
+import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
 
 const OPENROUTER_PROVIDER_NAME = "openrouter";
 const DEFAULT_API_BASE = "https://openrouter.ai/api/v1";
@@ -52,6 +54,9 @@ interface OpenRouterModalInternalsProps {
   isTesting: boolean;
   onClose: () => void;
   isOnboarding: boolean;
+  onSetGlobalDefault?: (modelName: string) => void;
+  globalDefault?: { provider_id: number; model_name: string } | null;
+  providerId?: number;
 }
 
 function OpenRouterModalInternals({
@@ -63,6 +68,9 @@ function OpenRouterModalInternals({
   isTesting,
   onClose,
   isOnboarding,
+  onSetGlobalDefault,
+  globalDefault,
+  providerId,
 }: OpenRouterModalInternalsProps) {
   const currentModels =
     fetchedModels.length > 0
@@ -139,6 +147,9 @@ function OpenRouterModalInternals({
           recommendedDefaultModel={null}
           shouldShowAutoUpdateToggle={false}
           onRefetch={isFetchDisabled ? undefined : handleFetchModels}
+          globalDefault={globalDefault}
+          providerId={providerId}
+          onSetGlobalDefault={onSetGlobalDefault}
         />
       )}
 
@@ -157,13 +168,14 @@ export default function OpenRouterModal({
   existingLlmProvider,
   shouldMarkAsDefault,
   onOpenChange,
-  defaultModelName,
+  globalDefault,
   onboardingState,
   onboardingActions,
   llmDescriptor,
 }: LLMProviderFormProps) {
   const [fetchedModels, setFetchedModels] = useState<ModelConfiguration[]>([]);
   const [isTesting, setIsTesting] = useState(false);
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const isOnboarding = variant === "onboarding";
   const { mutate } = useSWRConfig();
   const { wellKnownLLMProvider } = useWellKnownLLMProvider(
@@ -187,11 +199,7 @@ export default function OpenRouterModal({
         default_model_name: "",
       } as OpenRouterModalValues)
     : {
-        ...buildDefaultInitialValues(
-          existingLlmProvider,
-          modelConfigurations,
-          defaultModelName
-        ),
+        ...buildDefaultInitialValues(existingLlmProvider, modelConfigurations),
         api_key: existingLlmProvider?.api_key ?? "",
         api_base: existingLlmProvider?.api_base ?? DEFAULT_API_BASE,
       };
@@ -237,7 +245,9 @@ export default function OpenRouterModal({
             modelConfigurations:
               fetchedModels.length > 0 ? fetchedModels : modelConfigurations,
             existingLlmProvider,
-            shouldMarkAsDefault,
+            pendingDefaultModelName:
+              pendingDefault ??
+              (shouldMarkAsDefault ? values.default_model_name : undefined),
             setIsTesting,
             mutate,
             onClose,
@@ -256,6 +266,23 @@ export default function OpenRouterModal({
           isTesting={isTesting}
           onClose={onClose}
           isOnboarding={isOnboarding}
+          onSetGlobalDefault={
+            existingLlmProvider
+              ? async (modelName) => {
+                  try {
+                    await setDefaultLlmModel(existingLlmProvider.id, modelName);
+                    await refreshLlmProviderCaches(mutate);
+                    toast.success("Default model updated successfully!");
+                  } catch (e) {
+                    const msg =
+                      e instanceof Error ? e.message : "Unknown error";
+                    toast.error(`Failed to set default model: ${msg}`);
+                  }
+                }
+              : (modelName) => setPendingDefault(modelName)
+          }
+          globalDefault={globalDefault}
+          providerId={existingLlmProvider?.id}
         />
       )}
     </Formik>

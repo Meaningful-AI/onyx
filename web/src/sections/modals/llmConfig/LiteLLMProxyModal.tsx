@@ -36,6 +36,8 @@ import {
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import { toast } from "@/hooks/useToast";
+import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
+import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
 
 const DEFAULT_API_BASE = "http://localhost:4000";
 
@@ -53,6 +55,9 @@ interface LiteLLMProxyModalInternalsProps {
   isTesting: boolean;
   onClose: () => void;
   isOnboarding: boolean;
+  onSetGlobalDefault?: (modelName: string) => void;
+  globalDefault?: { provider_id: number; model_name: string } | null;
+  providerId?: number;
 }
 
 function LiteLLMProxyModalInternals({
@@ -64,6 +69,9 @@ function LiteLLMProxyModalInternals({
   isTesting,
   onClose,
   isOnboarding,
+  onSetGlobalDefault,
+  globalDefault,
+  providerId,
 }: LiteLLMProxyModalInternalsProps) {
   const currentModels =
     fetchedModels.length > 0
@@ -140,6 +148,9 @@ function LiteLLMProxyModalInternals({
           recommendedDefaultModel={null}
           shouldShowAutoUpdateToggle={false}
           onRefetch={isFetchDisabled ? undefined : handleFetchModels}
+          globalDefault={globalDefault}
+          providerId={providerId}
+          onSetGlobalDefault={onSetGlobalDefault}
         />
       )}
 
@@ -158,13 +169,14 @@ export default function LiteLLMProxyModal({
   existingLlmProvider,
   shouldMarkAsDefault,
   onOpenChange,
-  defaultModelName,
+  globalDefault,
   onboardingState,
   onboardingActions,
   llmDescriptor,
 }: LLMProviderFormProps) {
   const [fetchedModels, setFetchedModels] = useState<ModelConfiguration[]>([]);
   const [isTesting, setIsTesting] = useState(false);
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const isOnboarding = variant === "onboarding";
   const { mutate } = useSWRConfig();
   const { wellKnownLLMProvider } = useWellKnownLLMProvider(
@@ -188,11 +200,7 @@ export default function LiteLLMProxyModal({
         default_model_name: "",
       } as LiteLLMProxyModalValues)
     : {
-        ...buildDefaultInitialValues(
-          existingLlmProvider,
-          modelConfigurations,
-          defaultModelName
-        ),
+        ...buildDefaultInitialValues(existingLlmProvider, modelConfigurations),
         api_key: existingLlmProvider?.api_key ?? "",
         api_base: existingLlmProvider?.api_base ?? DEFAULT_API_BASE,
       };
@@ -238,7 +246,9 @@ export default function LiteLLMProxyModal({
             modelConfigurations:
               fetchedModels.length > 0 ? fetchedModels : modelConfigurations,
             existingLlmProvider,
-            shouldMarkAsDefault,
+            pendingDefaultModelName:
+              pendingDefault ??
+              (shouldMarkAsDefault ? values.default_model_name : undefined),
             setIsTesting,
             mutate,
             onClose,
@@ -257,6 +267,23 @@ export default function LiteLLMProxyModal({
           isTesting={isTesting}
           onClose={onClose}
           isOnboarding={isOnboarding}
+          onSetGlobalDefault={
+            existingLlmProvider
+              ? async (modelName) => {
+                  try {
+                    await setDefaultLlmModel(existingLlmProvider.id, modelName);
+                    await refreshLlmProviderCaches(mutate);
+                    toast.success("Default model updated successfully!");
+                  } catch (e) {
+                    const msg =
+                      e instanceof Error ? e.message : "Unknown error";
+                    toast.error(`Failed to set default model: ${msg}`);
+                  }
+                }
+              : (modelName) => setPendingDefault(modelName)
+          }
+          globalDefault={globalDefault}
+          providerId={existingLlmProvider?.id}
         />
       )}
     </Formik>

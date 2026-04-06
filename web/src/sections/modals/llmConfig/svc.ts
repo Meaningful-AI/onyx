@@ -56,7 +56,7 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
   initialValues,
   modelConfigurations,
   existingLlmProvider,
-  shouldMarkAsDefault,
+  pendingDefaultModelName,
   hideSuccess,
   setIsTesting,
   mutate,
@@ -166,7 +166,7 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
     return;
   }
 
-  if (shouldMarkAsDefault) {
+  if (pendingDefaultModelName) {
     const newLlmProvider = (await response.json()) as LLMProviderView;
     const setDefaultResponse = await fetch(`${LLM_ADMIN_URL}/default`, {
       method: "POST",
@@ -175,12 +175,12 @@ export const submitLLMProvider = async <T extends BaseLLMFormValues>({
       },
       body: JSON.stringify({
         provider_id: newLlmProvider.id,
-        model_name: finalDefaultModelName,
+        model_name: pendingDefaultModelName,
       }),
     });
     if (!setDefaultResponse.ok) {
       const errorMsg = (await setDefaultResponse.json()).detail;
-      toast.error(`Failed to set provider as default: ${errorMsg}`);
+      toast.error(`Failed to set default model: ${errorMsg}`);
       return;
     }
   }

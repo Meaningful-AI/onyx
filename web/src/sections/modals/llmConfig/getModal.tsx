@@ -1,4 +1,8 @@
-import { LLMProviderName, LLMProviderView } from "@/interfaces/llm";
+import {
+  DefaultModel,
+  LLMProviderName,
+  LLMProviderView,
+} from "@/interfaces/llm";
 import AnthropicModal from "@/sections/modals/llmConfig/AnthropicModal";
 import OpenAIModal from "@/sections/modals/llmConfig/OpenAIModal";
 import OllamaModal from "@/sections/modals/llmConfig/OllamaModal";
@@ -23,12 +27,12 @@ function detectIfRealOpenAIProvider(provider: LLMProviderView) {
 export function getModalForExistingProvider(
   provider: LLMProviderView,
   onOpenChange?: (open: boolean) => void,
-  defaultModelName?: string
+  globalDefault?: DefaultModel | null
 ) {
   const props = {
     existingLlmProvider: provider,
     onOpenChange,
-    defaultModelName,
+    globalDefault,
   };
 
   switch (provider.provider) {

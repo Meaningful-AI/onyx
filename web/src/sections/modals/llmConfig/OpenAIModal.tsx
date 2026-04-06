@@ -25,6 +25,9 @@ import {
   SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
+import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
+import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
+import { toast } from "@/hooks/useToast";
 
 const OPENAI_PROVIDER_NAME = "openai";
 const DEFAULT_DEFAULT_MODEL_NAME = "gpt-5.2";
@@ -34,13 +37,14 @@ export default function OpenAIModal({
   existingLlmProvider,
   shouldMarkAsDefault,
   onOpenChange,
-  defaultModelName,
+  globalDefault,
   onboardingState,
   onboardingActions,
   llmDescriptor,
 }: LLMProviderFormProps) {
   const isOnboarding = variant === "onboarding";
   const [isTesting, setIsTesting] = useState(false);
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
   const { wellKnownLLMProvider } =
     useWellKnownLLMProvider(OPENAI_PROVIDER_NAME);
@@ -61,17 +65,10 @@ export default function OpenAIModal({
         default_model_name: DEFAULT_DEFAULT_MODEL_NAME,
       }
     : {
-        ...buildDefaultInitialValues(
-          existingLlmProvider,
-          modelConfigurations,
-          defaultModelName
-        ),
+        ...buildDefaultInitialValues(existingLlmProvider, modelConfigurations),
         api_key: existingLlmProvider?.api_key ?? "",
         default_model_name:
-          (defaultModelName &&
-          modelConfigurations.some((m) => m.name === defaultModelName)
-            ? defaultModelName
-            : undefined) ??
+          existingLlmProvider?.model_configurations?.[0]?.name ??
           wellKnownLLMProvider?.recommended_default_model?.name ??
           DEFAULT_DEFAULT_MODEL_NAME,
         is_auto_mode: existingLlmProvider?.is_auto_mode ?? true,
@@ -117,7 +114,9 @@ export default function OpenAIModal({
             initialValues,
             modelConfigurations,
             existingLlmProvider,
-            shouldMarkAsDefault,
+            pendingDefaultModelName:
+              pendingDefault ??
+              (shouldMarkAsDefault ? values.default_model_name : undefined),
             setIsTesting,
             mutate,
             onClose,
@@ -156,6 +155,26 @@ export default function OpenAIModal({
                 wellKnownLLMProvider?.recommended_default_model ?? null
               }
               shouldShowAutoUpdateToggle={true}
+              globalDefault={globalDefault}
+              providerId={existingLlmProvider?.id}
+              onSetGlobalDefault={
+                existingLlmProvider
+                  ? async (modelName) => {
+                      try {
+                        await setDefaultLlmModel(
+                          existingLlmProvider.id,
+                          modelName
+                        );
+                        await refreshLlmProviderCaches(mutate);
+                        toast.success("Default model updated successfully!");
+                      } catch (e) {
+                        const msg =
+                          e instanceof Error ? e.message : "Unknown error";
+                        toast.error(`Failed to set default model: ${msg}`);
+                      }
+                    }
+                  : (modelName) => setPendingDefault(modelName)
+              }
             />
           )}
 

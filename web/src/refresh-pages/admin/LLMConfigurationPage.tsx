@@ -31,6 +31,7 @@ import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationMo
 import { useCreateModal } from "@/refresh-components/contexts/ModalContext";
 import Separator from "@/refresh-components/Separator";
 import {
+  DefaultModel,
   LLMProviderView,
   WellKnownLLMProviderDescriptor,
 } from "@/interfaces/llm";
@@ -114,16 +115,14 @@ const PROVIDER_MODAL_MAP: Record<
 
 interface ExistingProviderCardProps {
   provider: LLMProviderView;
-  isDefault: boolean;
   isLastProvider: boolean;
-  defaultModelName?: string;
+  globalDefault?: DefaultModel | null;
 }
 
 function ExistingProviderCard({
   provider,
-  isDefault,
   isLastProvider,
-  defaultModelName,
+  globalDefault,
 }: ExistingProviderCardProps) {
   const { mutate } = useSWRConfig();
   const [isOpen, setIsOpen] = useState(false);
@@ -182,7 +181,6 @@ function ExistingProviderCard({
             description={getProviderDisplayName(provider.provider)}
             sizePreset="main-ui"
             variant="section"
-            tag={isDefault ? { title: "Default", color: "blue" } : undefined}
             rightChildren={
               <div className="flex flex-row">
                 <Hoverable.Item
@@ -212,7 +210,7 @@ function ExistingProviderCard({
             }
           />
           {isOpen &&
-            getModalForExistingProvider(provider, setIsOpen, defaultModelName)}
+            getModalForExistingProvider(provider, setIsOpen, globalDefault)}
         </SelectCard>
       </Hoverable.Root>
     </>
@@ -336,15 +334,6 @@ export default function LLMConfigurationPage() {
   const hasProviders = existingLlmProviders.length > 0;
   const isFirstProvider = !hasProviders;
 
-  // Pre-sort providers so the default appears first
-  const sortedProviders = [...existingLlmProviders].sort((a, b) => {
-    const aIsDefault = defaultText?.provider_id === a.id;
-    const bIsDefault = defaultText?.provider_id === b.id;
-    if (aIsDefault && !bIsDefault) return -1;
-    if (!aIsDefault && bIsDefault) return 1;
-    return 0;
-  });
-
   // Pre-filter to providers that have at least one visible model
   const providersWithVisibleModels = existingLlmProviders
     .map((provider) => ({
@@ -438,17 +427,12 @@ export default function LLMConfigurationPage() {
               />
 
               <div className="flex flex-col gap-2">
-                {sortedProviders.map((provider) => (
+                {existingLlmProviders.map((provider) => (
                   <ExistingProviderCard
                     key={provider.id}
                     provider={provider}
-                    isDefault={defaultText?.provider_id === provider.id}
-                    isLastProvider={sortedProviders.length === 1}
-                    defaultModelName={
-                      defaultText?.provider_id === provider.id
-                        ? defaultText.model_name
-                        : undefined
-                    }
+                    isLastProvider={existingLlmProviders.length === 1}
+                    globalDefault={defaultText}
                   />
                 ))}
               </div>

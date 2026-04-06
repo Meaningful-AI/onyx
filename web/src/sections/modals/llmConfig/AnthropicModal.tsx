@@ -25,6 +25,9 @@ import {
   SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
+import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
+import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
+import { toast } from "@/hooks/useToast";
 
 const ANTHROPIC_PROVIDER_NAME = "anthropic";
 const DEFAULT_DEFAULT_MODEL_NAME = "claude-sonnet-4-5";
@@ -34,13 +37,14 @@ export default function AnthropicModal({
   existingLlmProvider,
   shouldMarkAsDefault,
   onOpenChange,
-  defaultModelName,
+  globalDefault,
   onboardingState,
   onboardingActions,
   llmDescriptor,
 }: LLMProviderFormProps) {
   const isOnboarding = variant === "onboarding";
   const [isTesting, setIsTesting] = useState(false);
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
   const { wellKnownLLMProvider } = useWellKnownLLMProvider(
     ANTHROPIC_PROVIDER_NAME
@@ -62,18 +66,11 @@ export default function AnthropicModal({
         default_model_name: DEFAULT_DEFAULT_MODEL_NAME,
       }
     : {
-        ...buildDefaultInitialValues(
-          existingLlmProvider,
-          modelConfigurations,
-          defaultModelName
-        ),
+        ...buildDefaultInitialValues(existingLlmProvider, modelConfigurations),
         api_key: existingLlmProvider?.api_key ?? "",
         api_base: existingLlmProvider?.api_base ?? undefined,
         default_model_name:
-          (defaultModelName &&
-          modelConfigurations.some((m) => m.name === defaultModelName)
-            ? defaultModelName
-            : undefined) ??
+          existingLlmProvider?.model_configurations?.[0]?.name ??
           wellKnownLLMProvider?.recommended_default_model?.name ??
           DEFAULT_DEFAULT_MODEL_NAME,
         is_auto_mode: existingLlmProvider?.is_auto_mode ?? true,
@@ -119,7 +116,9 @@ export default function AnthropicModal({
             initialValues,
             modelConfigurations,
             existingLlmProvider,
-            shouldMarkAsDefault,
+            pendingDefaultModelName:
+              pendingDefault ??
+              (shouldMarkAsDefault ? values.default_model_name : undefined),
             setIsTesting,
             mutate,
             onClose,
@@ -158,6 +157,26 @@ export default function AnthropicModal({
                 wellKnownLLMProvider?.recommended_default_model ?? null
               }
               shouldShowAutoUpdateToggle={true}
+              globalDefault={globalDefault}
+              providerId={existingLlmProvider?.id}
+              onSetGlobalDefault={
+                existingLlmProvider
+                  ? async (modelName) => {
+                      try {
+                        await setDefaultLlmModel(
+                          existingLlmProvider.id,
+                          modelName
+                        );
+                        await refreshLlmProviderCaches(mutate);
+                        toast.success("Default model updated successfully!");
+                      } catch (e) {
+                        const msg =
+                          e instanceof Error ? e.message : "Unknown error";
+                        toast.error(`Failed to set default model: ${msg}`);
+                      }
+                    }
+                  : (modelName) => setPendingDefault(modelName)
+              }
             />
           )}
 

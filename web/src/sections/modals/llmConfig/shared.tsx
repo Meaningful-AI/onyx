@@ -5,7 +5,11 @@ import { Form, FormikProps } from "formik";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import { useAgents } from "@/hooks/useAgents";
 import { useUserGroups } from "@/lib/hooks";
-import { ModelConfiguration, SimpleKnownModel } from "@/interfaces/llm";
+import {
+  DefaultModel,
+  ModelConfiguration,
+  SimpleKnownModel,
+} from "@/interfaces/llm";
 import * as InputLayouts from "@/layouts/input-layouts";
 import Checkbox from "@/refresh-components/inputs/Checkbox";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
@@ -375,6 +379,12 @@ export interface ModelsFieldProps<T> {
   modelConfigurations: ModelConfiguration[];
   recommendedDefaultModel: SimpleKnownModel | null;
   shouldShowAutoUpdateToggle: boolean;
+  /** The current global default model. */
+  globalDefault?: DefaultModel | null;
+  /** The provider ID for this modal (set for existing providers). */
+  providerId?: number;
+  /** Called when the user clicks "Set as default" on a model. */
+  onSetGlobalDefault?: (modelName: string) => void;
   /** Called when the user clicks the refresh button to re-fetch models. */
   onRefetch?: () => Promise<void> | void;
   /** Called when the user adds a custom model by name. Enables the "Add Model" input. */
@@ -386,13 +396,23 @@ export function ModelsField<T extends BaseLLMFormValues>({
   modelConfigurations,
   recommendedDefaultModel,
   shouldShowAutoUpdateToggle,
+  globalDefault,
+  providerId,
+  onSetGlobalDefault,
   onRefetch,
   onAddModel,
 }: ModelsFieldProps<T>) {
   const [newModelName, setNewModelName] = useState("");
   const isAutoMode = formikProps.values.is_auto_mode;
   const selectedModels = formikProps.values.selected_model_names ?? [];
-  const defaultModel = formikProps.values.default_model_name;
+
+  // A model is the global default if it belongs to this provider and matches
+  // the global default model name.
+  const isGlobalDefault = (modelName: string) =>
+    globalDefault != null &&
+    providerId != null &&
+    globalDefault.provider_id === providerId &&
+    globalDefault.model_name === modelName;
 
   function handleCheckboxChange(modelName: string, checked: boolean) {
     // Read current values inside the handler to avoid stale closure issues
@@ -511,10 +531,27 @@ export function ModelsField<T extends BaseLLMFormValues>({
                       icon={() => <Checkbox checked />}
                       title={model.display_name || model.name}
                       rightChildren={
-                        model.name === defaultModel ? (
+                        isGlobalDefault(model.name) ? (
                           <Section>
                             <Tag title="Default Model" color="blue" />
                           </Section>
+                        ) : onSetGlobalDefault ? (
+                          <Hoverable.Item
+                            group="LLMConfigurationButton"
+                            variant="opacity-on-hover"
+                          >
+                            <Button
+                              size="sm"
+                              prominence="internal"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSetGlobalDefault(model.name);
+                              }}
+                              type="button"
+                            >
+                              Set as default
+                            </Button>
+                          </Hoverable.Item>
                         ) : undefined
                       }
                     />
@@ -525,7 +562,6 @@ export function ModelsField<T extends BaseLLMFormValues>({
                   const isSelected = selectedModels.includes(
                     modelConfiguration.name
                   );
-                  const isDefault = defaultModel === modelConfiguration.name;
 
                   return (
                     <Hoverable.Root
@@ -548,11 +584,11 @@ export function ModelsField<T extends BaseLLMFormValues>({
                         }
                         rightChildren={
                           isSelected ? (
-                            isDefault ? (
+                            isGlobalDefault(modelConfiguration.name) ? (
                               <Section>
                                 <Tag color="blue" title="Default Model" />
                               </Section>
-                            ) : (
+                            ) : onSetGlobalDefault ? (
                               <Hoverable.Item
                                 group="LLMConfigurationButton"
                                 variant="opacity-on-hover"
@@ -562,14 +598,14 @@ export function ModelsField<T extends BaseLLMFormValues>({
                                   prominence="internal"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleSetDefault(modelConfiguration.name);
+                                    onSetGlobalDefault(modelConfiguration.name);
                                   }}
                                   type="button"
                                 >
                                   Set as default
                                 </Button>
                               </Hoverable.Item>
-                            )
+                            ) : undefined
                           ) : undefined
                         }
                       />

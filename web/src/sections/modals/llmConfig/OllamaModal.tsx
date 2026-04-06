@@ -37,6 +37,8 @@ import debounce from "lodash/debounce";
 import Tabs from "@/refresh-components/Tabs";
 import { Card } from "@opal/components";
 import { toast } from "@/hooks/useToast";
+import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
+import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
 
 const OLLAMA_PROVIDER_NAME = "ollama_chat";
 const DEFAULT_API_BASE = "http://127.0.0.1:11434";
@@ -58,6 +60,9 @@ interface OllamaModalInternalsProps {
   isTesting: boolean;
   onClose: () => void;
   isOnboarding: boolean;
+  onSetGlobalDefault?: (modelName: string) => void;
+  globalDefault?: { provider_id: number; model_name: string } | null;
+  providerId?: number;
 }
 
 function OllamaModalInternals({
@@ -68,6 +73,9 @@ function OllamaModalInternals({
   isTesting,
   onClose,
   isOnboarding,
+  onSetGlobalDefault,
+  globalDefault,
+  providerId,
 }: OllamaModalInternalsProps) {
   const isInitialMount = useRef(true);
 
@@ -193,6 +201,9 @@ function OllamaModalInternals({
           formikProps={formikProps}
           recommendedDefaultModel={null}
           shouldShowAutoUpdateToggle={false}
+          globalDefault={globalDefault}
+          providerId={providerId}
+          onSetGlobalDefault={onSetGlobalDefault}
         />
       )}
 
@@ -211,13 +222,14 @@ export default function OllamaModal({
   existingLlmProvider,
   shouldMarkAsDefault,
   onOpenChange,
-  defaultModelName,
+  globalDefault,
   onboardingState,
   onboardingActions,
   llmDescriptor,
 }: LLMProviderFormProps) {
   const [fetchedModels, setFetchedModels] = useState<ModelConfiguration[]>([]);
   const [isTesting, setIsTesting] = useState(false);
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const isOnboarding = variant === "onboarding";
   const { mutate } = useSWRConfig();
   const { wellKnownLLMProvider } =
@@ -242,11 +254,7 @@ export default function OllamaModal({
         },
       } as OllamaModalValues)
     : {
-        ...buildDefaultInitialValues(
-          existingLlmProvider,
-          modelConfigurations,
-          defaultModelName
-        ),
+        ...buildDefaultInitialValues(existingLlmProvider, modelConfigurations),
         api_base: existingLlmProvider?.api_base ?? DEFAULT_API_BASE,
         custom_config: {
           OLLAMA_API_KEY:
@@ -306,7 +314,11 @@ export default function OllamaModal({
             modelConfigurations:
               fetchedModels.length > 0 ? fetchedModels : modelConfigurations,
             existingLlmProvider,
-            shouldMarkAsDefault,
+            pendingDefaultModelName:
+              pendingDefault ??
+              (shouldMarkAsDefault
+                ? submitValues.default_model_name
+                : undefined),
             setIsTesting,
             mutate,
             onClose,
@@ -324,6 +336,23 @@ export default function OllamaModal({
           isTesting={isTesting}
           onClose={onClose}
           isOnboarding={isOnboarding}
+          globalDefault={globalDefault}
+          providerId={existingLlmProvider?.id}
+          onSetGlobalDefault={
+            existingLlmProvider
+              ? async (modelName) => {
+                  try {
+                    await setDefaultLlmModel(existingLlmProvider.id, modelName);
+                    await refreshLlmProviderCaches(mutate);
+                    toast.success("Default model updated successfully!");
+                  } catch (e) {
+                    const msg =
+                      e instanceof Error ? e.message : "Unknown error";
+                    toast.error(`Failed to set default model: ${msg}`);
+                  }
+                }
+              : (modelName) => setPendingDefault(modelName)
+          }
         />
       )}
     </Formik>

@@ -37,6 +37,8 @@ import {
 import { fetchModels } from "@/app/admin/configuration/llm/utils";
 import debounce from "lodash/debounce";
 import { toast } from "@/hooks/useToast";
+import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
+import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
 
 const DEFAULT_API_BASE = "http://localhost:1234";
 
@@ -55,6 +57,9 @@ interface LMStudioFormInternalsProps {
   isTesting: boolean;
   onClose: () => void;
   isOnboarding: boolean;
+  onSetGlobalDefault?: (modelName: string) => void;
+  globalDefault?: { provider_id: number; model_name: string } | null;
+  providerId?: number;
 }
 
 function LMStudioFormInternals({
@@ -65,6 +70,9 @@ function LMStudioFormInternals({
   isTesting,
   onClose,
   isOnboarding,
+  onSetGlobalDefault,
+  globalDefault,
+  providerId,
 }: LMStudioFormInternalsProps) {
   const initialApiKey =
     (existingLlmProvider?.custom_config?.LM_STUDIO_API_KEY as string) ?? "";
@@ -173,6 +181,9 @@ function LMStudioFormInternals({
           formikProps={formikProps}
           recommendedDefaultModel={null}
           shouldShowAutoUpdateToggle={false}
+          globalDefault={globalDefault}
+          providerId={providerId}
+          onSetGlobalDefault={onSetGlobalDefault}
         />
       )}
 
@@ -191,13 +202,14 @@ export default function LMStudioForm({
   existingLlmProvider,
   shouldMarkAsDefault,
   onOpenChange,
-  defaultModelName,
+  globalDefault,
   onboardingState,
   onboardingActions,
   llmDescriptor,
 }: LLMProviderFormProps) {
   const [fetchedModels, setFetchedModels] = useState<ModelConfiguration[]>([]);
   const [isTesting, setIsTesting] = useState(false);
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const isOnboarding = variant === "onboarding";
   const { mutate } = useSWRConfig();
   const { wellKnownLLMProvider } = useWellKnownLLMProvider(
@@ -223,11 +235,7 @@ export default function LMStudioForm({
         },
       } as LMStudioFormValues)
     : {
-        ...buildDefaultInitialValues(
-          existingLlmProvider,
-          modelConfigurations,
-          defaultModelName
-        ),
+        ...buildDefaultInitialValues(existingLlmProvider, modelConfigurations),
         api_base: existingLlmProvider?.api_base ?? DEFAULT_API_BASE,
         custom_config: {
           LM_STUDIO_API_KEY:
@@ -287,7 +295,11 @@ export default function LMStudioForm({
             modelConfigurations:
               fetchedModels.length > 0 ? fetchedModels : modelConfigurations,
             existingLlmProvider,
-            shouldMarkAsDefault,
+            pendingDefaultModelName:
+              pendingDefault ??
+              (shouldMarkAsDefault
+                ? submitValues.default_model_name
+                : undefined),
             setIsTesting,
             mutate,
             onClose,
@@ -305,6 +317,23 @@ export default function LMStudioForm({
           isTesting={isTesting}
           onClose={onClose}
           isOnboarding={isOnboarding}
+          onSetGlobalDefault={
+            existingLlmProvider
+              ? async (modelName) => {
+                  try {
+                    await setDefaultLlmModel(existingLlmProvider.id, modelName);
+                    await refreshLlmProviderCaches(mutate);
+                    toast.success("Default model updated successfully!");
+                  } catch (e) {
+                    const msg =
+                      e instanceof Error ? e.message : "Unknown error";
+                    toast.error(`Failed to set default model: ${msg}`);
+                  }
+                }
+              : (modelName) => setPendingDefault(modelName)
+          }
+          globalDefault={globalDefault}
+          providerId={existingLlmProvider?.id}
         />
       )}
     </Formik>

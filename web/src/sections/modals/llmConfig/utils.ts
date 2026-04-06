@@ -12,16 +12,9 @@ export const LLM_FORM_CLASS_NAME = "flex flex-col gap-y-4 items-stretch mt-6";
 
 export const buildDefaultInitialValues = (
   existingLlmProvider?: LLMProviderView,
-  modelConfigurations?: ModelConfiguration[],
-  currentDefaultModelName?: string
+  modelConfigurations?: ModelConfiguration[]
 ) => {
   const defaultModelName =
-    (currentDefaultModelName &&
-    existingLlmProvider?.model_configurations?.some(
-      (m) => m.name === currentDefaultModelName
-    )
-      ? currentDefaultModelName
-      : undefined) ??
     existingLlmProvider?.model_configurations?.[0]?.name ??
     modelConfigurations?.[0]?.name ??
     "";
@@ -104,7 +97,8 @@ export interface SubmitLLMProviderParams<
   initialValues: T;
   modelConfigurations: ModelConfiguration[];
   existingLlmProvider?: LLMProviderView;
-  shouldMarkAsDefault?: boolean;
+  /** When set, the given model will be marked as the global default after provider creation. */
+  pendingDefaultModelName?: string;
   hideSuccess?: boolean;
   setIsTesting: (testing: boolean) => void;
   mutate: ScopedMutator;

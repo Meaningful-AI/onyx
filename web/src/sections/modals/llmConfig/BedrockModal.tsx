@@ -40,6 +40,8 @@ import { Card } from "@opal/components";
 import { Section } from "@/layouts/general-layouts";
 import { SvgAlertCircle } from "@opal/icons";
 import { Content } from "@opal/layouts";
+import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
+import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
 import { toast } from "@/hooks/useToast";
 import useOnMount from "@/hooks/useOnMount";
 
@@ -87,6 +89,9 @@ interface BedrockModalInternalsProps {
   isTesting: boolean;
   onClose: () => void;
   isOnboarding: boolean;
+  onSetGlobalDefault?: (modelName: string) => void;
+  globalDefault?: { provider_id: number; model_name: string } | null;
+  providerId?: number;
 }
 
 function BedrockModalInternals({
@@ -98,6 +103,9 @@ function BedrockModalInternals({
   isTesting,
   onClose,
   isOnboarding,
+  onSetGlobalDefault,
+  globalDefault,
+  providerId,
 }: BedrockModalInternalsProps) {
   const authMethod = formikProps.values.custom_config?.BEDROCK_AUTH_METHOD;
 
@@ -296,6 +304,9 @@ function BedrockModalInternals({
           recommendedDefaultModel={null}
           shouldShowAutoUpdateToggle={false}
           onRefetch={isFetchDisabled ? undefined : handleFetchModels}
+          globalDefault={globalDefault}
+          providerId={providerId}
+          onSetGlobalDefault={onSetGlobalDefault}
         />
       )}
 
@@ -314,13 +325,14 @@ export default function BedrockModal({
   existingLlmProvider,
   shouldMarkAsDefault,
   onOpenChange,
-  defaultModelName,
+  globalDefault,
   onboardingState,
   onboardingActions,
   llmDescriptor,
 }: LLMProviderFormProps) {
   const [fetchedModels, setFetchedModels] = useState<ModelConfiguration[]>([]);
   const [isTesting, setIsTesting] = useState(false);
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const isOnboarding = variant === "onboarding";
   const { mutate } = useSWRConfig();
   const { wellKnownLLMProvider } = useWellKnownLLMProvider(
@@ -349,11 +361,7 @@ export default function BedrockModal({
         },
       } as BedrockModalValues)
     : {
-        ...buildDefaultInitialValues(
-          existingLlmProvider,
-          modelConfigurations,
-          defaultModelName
-        ),
+        ...buildDefaultInitialValues(existingLlmProvider, modelConfigurations),
         custom_config: {
           AWS_REGION_NAME:
             (existingLlmProvider?.custom_config?.AWS_REGION_NAME as string) ??
@@ -428,7 +436,11 @@ export default function BedrockModal({
             modelConfigurations:
               fetchedModels.length > 0 ? fetchedModels : modelConfigurations,
             existingLlmProvider,
-            shouldMarkAsDefault,
+            pendingDefaultModelName:
+              pendingDefault ??
+              (shouldMarkAsDefault
+                ? submitValues.default_model_name
+                : undefined),
             setIsTesting,
             mutate,
             onClose,
@@ -447,6 +459,23 @@ export default function BedrockModal({
           isTesting={isTesting}
           onClose={onClose}
           isOnboarding={isOnboarding}
+          onSetGlobalDefault={
+            existingLlmProvider
+              ? async (modelName) => {
+                  try {
+                    await setDefaultLlmModel(existingLlmProvider.id, modelName);
+                    await refreshLlmProviderCaches(mutate);
+                    toast.success("Default model updated successfully!");
+                  } catch (e) {
+                    const msg =
+                      e instanceof Error ? e.message : "Unknown error";
+                    toast.error(`Failed to set default model: ${msg}`);
+                  }
+                }
+              : (modelName) => setPendingDefault(modelName)
+          }
+          globalDefault={globalDefault}
+          providerId={existingLlmProvider?.id}
         />
       )}
     </Formik>

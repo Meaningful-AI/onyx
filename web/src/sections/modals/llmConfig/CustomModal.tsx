@@ -211,22 +211,19 @@ export default function CustomModal({
   existingLlmProvider,
   shouldMarkAsDefault,
   onOpenChange,
-  defaultModelName,
+  globalDefault,
   onboardingState,
   onboardingActions,
 }: LLMProviderFormProps) {
   const isOnboarding = variant === "onboarding";
   const [isTesting, setIsTesting] = useState(false);
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
 
   const onClose = () => onOpenChange?.(false);
 
   const initialValues = {
-    ...buildDefaultInitialValues(
-      existingLlmProvider,
-      undefined,
-      defaultModelName
-    ),
+    ...buildDefaultInitialValues(existingLlmProvider, undefined),
     ...(isOnboarding ? buildOnboardingInitialValues() : {}),
     provider: existingLlmProvider?.provider ?? "",
     model_configurations: existingLlmProvider?.model_configurations.map(
@@ -346,7 +343,11 @@ export default function CustomModal({
             },
             modelConfigurations,
             existingLlmProvider,
-            shouldMarkAsDefault,
+            pendingDefaultModelName:
+              pendingDefault ??
+              (shouldMarkAsDefault
+                ? values.default_model_name || modelConfigurations[0]?.name
+                : undefined),
             setIsTesting,
             mutate,
             onClose,

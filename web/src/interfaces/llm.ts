@@ -124,8 +124,8 @@ export interface LLMProviderFormProps {
   shouldMarkAsDefault?: boolean;
   onOpenChange?: (open: boolean) => void;
 
-  /** The current default model name for this provider (from the global default). */
-  defaultModelName?: string;
+  /** The current global default model (provider_id + model_name). */
+  globalDefault?: DefaultModel | null;
 
   // Onboarding-specific (only when variant === "onboarding")
   onboardingState?: OnboardingState;

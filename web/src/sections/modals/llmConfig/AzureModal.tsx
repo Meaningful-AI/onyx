@@ -38,6 +38,8 @@ import {
   parseAzureTargetUri,
 } from "@/lib/azureTargetUri";
 import { toast } from "@/hooks/useToast";
+import { setDefaultLlmModel } from "@/lib/llmConfig/svc";
+import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
 
 const AZURE_PROVIDER_NAME = "azure";
 
@@ -84,13 +86,14 @@ export default function AzureModal({
   existingLlmProvider,
   shouldMarkAsDefault,
   onOpenChange,
-  defaultModelName,
+  globalDefault,
   onboardingState,
   onboardingActions,
   llmDescriptor,
 }: LLMProviderFormProps) {
   const isOnboarding = variant === "onboarding";
   const [isTesting, setIsTesting] = useState(false);
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
   const { wellKnownLLMProvider } = useWellKnownLLMProvider(AZURE_PROVIDER_NAME);
 
@@ -123,11 +126,7 @@ export default function AzureModal({
         default_model_name: "",
       } as AzureModalValues)
     : {
-        ...buildDefaultInitialValues(
-          existingLlmProvider,
-          modelConfigurations,
-          defaultModelName
-        ),
+        ...buildDefaultInitialValues(existingLlmProvider, modelConfigurations),
         api_key: existingLlmProvider?.api_key ?? "",
         target_uri: buildTargetUri(existingLlmProvider),
       };
@@ -186,7 +185,11 @@ export default function AzureModal({
             initialValues,
             modelConfigurations,
             existingLlmProvider,
-            shouldMarkAsDefault,
+            pendingDefaultModelName:
+              pendingDefault ??
+              (shouldMarkAsDefault
+                ? processedValues.default_model_name
+                : undefined),
             setIsTesting,
             mutate,
             onClose,
@@ -237,6 +240,26 @@ export default function AzureModal({
               formikProps={formikProps}
               recommendedDefaultModel={null}
               shouldShowAutoUpdateToggle={false}
+              globalDefault={globalDefault}
+              providerId={existingLlmProvider?.id}
+              onSetGlobalDefault={
+                existingLlmProvider
+                  ? async (modelName) => {
+                      try {
+                        await setDefaultLlmModel(
+                          existingLlmProvider.id,
+                          modelName
+                        );
+                        await refreshLlmProviderCaches(mutate);
+                        toast.success("Default model updated successfully!");
+                      } catch (e) {
+                        const msg =
+                          e instanceof Error ? e.message : "Unknown error";
+                        toast.error(`Failed to set default model: ${msg}`);
+                      }
+                    }
+                  : (modelName) => setPendingDefault(modelName)
+              }
               onAddModel={(modelName) => {
                 const newModel: ModelConfiguration = {
                   name: modelName,
