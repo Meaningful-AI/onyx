@@ -6,7 +6,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/onyx-dot-app/onyx/cli/internal/api"
-	"github.com/onyx-dot-app/onyx/cli/internal/config"
 	"github.com/onyx-dot-app/onyx/cli/internal/exitcodes"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +24,7 @@ Use --json for machine-readable output.`,
   onyx-cli agents --json
   onyx-cli agents --json | jq '.[].name'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg := config.Load()
+			cfg := loadConfig(cmd)
 			if !cfg.IsConfigured() {
 				return exitcodes.New(exitcodes.NotConfigured, "onyx CLI is not configured\n  Run: onyx-cli configure")
 			}

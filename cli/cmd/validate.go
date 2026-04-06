@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/onyx-dot-app/onyx/cli/internal/api"
-	"github.com/onyx-dot-app/onyx/cli/internal/config"
 	"github.com/onyx-dot-app/onyx/cli/internal/exitcodes"
 	"github.com/onyx-dot-app/onyx/cli/internal/version"
 	log "github.com/sirupsen/logrus"
@@ -23,19 +23,21 @@ is valid. Also reports the server version and warns if it is below the
 minimum required.`,
 		Example: `  onyx-cli validate-config`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cfgPath := effectiveConfigPath(cmd)
+
 			// Check config file
-			if !config.ConfigExists() {
-				return exitcodes.Newf(exitcodes.NotConfigured, "config file not found at %s\n  Run: onyx-cli configure", config.ConfigFilePath())
+			if _, err := os.Stat(cfgPath); err != nil {
+				return exitcodes.Newf(exitcodes.NotConfigured, "config file not found at %s\n  Run: onyx-cli configure", cfgPath)
 			}
 
-			cfg := config.Load()
+			cfg := loadConfig(cmd)
 
 			// Check API key
 			if !cfg.IsConfigured() {
 				return exitcodes.New(exitcodes.NotConfigured, "API key is missing\n  Run: onyx-cli configure")
 			}
 
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Config:  %s\n", config.ConfigFilePath())
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Config:  %s\n", cfgPath)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Server:  %s\n", cfg.ServerURL)
 
 			// Test connection

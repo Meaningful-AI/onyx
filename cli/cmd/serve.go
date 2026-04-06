@@ -280,6 +280,7 @@ func newServeCmd() *cobra.Command {
 		rateLimitPerMin   int
 		rateLimitBurst    int
 		rateLimitCache    int
+		serverURL         string
 	)
 
 	cmd := &cobra.Command{
@@ -300,9 +301,14 @@ environment variable (the --host-key flag takes precedence).`,
 		Example: `  onyx-cli serve --port 2222
   ssh localhost -p 2222
   onyx-cli serve --host 0.0.0.0 --port 2222
-  onyx-cli serve --idle-timeout 30m --max-session-timeout 2h`,
+  onyx-cli serve --idle-timeout 30m --max-session-timeout 2h
+  onyx-cli serve --server-url https://my-onyx.example.com
+  onyx-cli serve --config-file /etc/onyx-cli/config.json  # global flag`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			serverCfg := config.Load()
+			serverCfg := loadConfig(cmd)
+			if cmd.Flags().Changed("server-url") {
+				serverCfg.ServerURL = serverURL
+			}
 			if serverCfg.ServerURL == "" {
 				return exitcodes.New(exitcodes.NotConfigured, "server URL is not configured\n  Run: onyx-cli configure")
 			}
@@ -446,6 +452,8 @@ environment variable (the --host-key flag takes precedence).`,
 		defaultServeRateLimitCacheSize,
 		"Maximum number of IP limiter entries tracked in memory",
 	)
+	cmd.Flags().StringVar(&serverURL, "server-url", "",
+		"Onyx server URL (overrides config file and $"+config.EnvServerURL+")")
 
 	return cmd
 }

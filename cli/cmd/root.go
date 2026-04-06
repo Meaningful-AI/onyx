@@ -13,6 +13,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// loadConfig loads the CLI config, using the --config-file persistent flag if set.
+func loadConfig(cmd *cobra.Command) config.OnyxCliConfig {
+	cf, _ := cmd.Flags().GetString("config-file")
+	return config.Load(cf)
+}
+
+// effectiveConfigPath returns the config file path, respecting --config-file.
+func effectiveConfigPath(cmd *cobra.Command) string {
+	if cf, _ := cmd.Flags().GetString("config-file"); cf != "" {
+		return cf
+	}
+	return config.ConfigFilePath()
+}
+
 // Version and Commit are set via ldflags at build time.
 var (
 	Version string
@@ -29,7 +43,7 @@ func fullVersion() string {
 func printVersion(cmd *cobra.Command) {
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Client version: %s\n", fullVersion())
 
-	cfg := config.Load()
+	cfg := loadConfig(cmd)
 	if !cfg.IsConfigured() {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Server version: unknown (not configured)\n")
 		return
@@ -84,6 +98,8 @@ func Execute() error {
 	}
 
 	rootCmd.PersistentFlags().BoolVar(&opts.Debug, "debug", false, "run in debug mode")
+	rootCmd.PersistentFlags().String("config-file", "",
+		"Path to config file (default: "+config.ConfigFilePath()+")")
 
 	// Custom --version flag instead of Cobra's built-in (which only shows one version string)
 	var showVersion bool

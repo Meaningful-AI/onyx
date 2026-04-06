@@ -11,7 +11,6 @@ import (
 	"syscall"
 
 	"github.com/onyx-dot-app/onyx/cli/internal/api"
-	"github.com/onyx-dot-app/onyx/cli/internal/config"
 	"github.com/onyx-dot-app/onyx/cli/internal/exitcodes"
 	"github.com/onyx-dot-app/onyx/cli/internal/models"
 	"github.com/onyx-dot-app/onyx/cli/internal/overflow"
@@ -49,7 +48,7 @@ to a temp file. Set --max-output 0 to disable truncation.`,
   cat error.log | onyx-cli ask --prompt "Find the root cause"
   echo "what is onyx?" | onyx-cli ask`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg := config.Load()
+			cfg := loadConfig(cmd)
 			if !cfg.IsConfigured() {
 				return exitcodes.New(exitcodes.NotConfigured, "onyx CLI is not configured\n  Run: onyx-cli configure")
 			}

@@ -78,27 +78,37 @@ func ConfigExists() bool {
 	return err == nil
 }
 
-// LoadFromDisk reads config from the file only, without applying environment
-// variable overrides. Use this when you need the persisted config values
-// (e.g., to preserve them during a save operation).
-func LoadFromDisk() OnyxCliConfig {
+// LoadFromDisk reads config from the given file path without applying
+// environment variable overrides. Use this when you need the persisted
+// config values (e.g., to preserve them during a save operation).
+// If no path is provided, the default config file path is used.
+func LoadFromDisk(path ...string) OnyxCliConfig {
+	p := ConfigFilePath()
+	if len(path) > 0 && path[0] != "" {
+		p = path[0]
+	}
+
 	cfg := DefaultConfig()
 
-	data, err := os.ReadFile(ConfigFilePath())
+	data, err := os.ReadFile(p)
 	if err == nil {
 		if jsonErr := json.Unmarshal(data, &cfg); jsonErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: config file %s is malformed: %v (using defaults)\n", ConfigFilePath(), jsonErr)
+			fmt.Fprintf(os.Stderr, "warning: config file %s is malformed: %v (using defaults)\n", p, jsonErr)
 		}
 	}
 
 	return cfg
 }
 
-// Load reads config from file and applies environment variable overrides.
-func Load() OnyxCliConfig {
-	cfg := LoadFromDisk()
+// Load reads config from the given file path and applies environment variable
+// overrides. If no path is provided, the default config file path is used.
+func Load(path ...string) OnyxCliConfig {
+	cfg := LoadFromDisk(path...)
+	applyEnvOverrides(&cfg)
+	return cfg
+}
 
-	// Environment overrides
+func applyEnvOverrides(cfg *OnyxCliConfig) {
 	if v := os.Getenv(EnvServerURL); v != "" {
 		cfg.ServerURL = v
 	}
@@ -117,8 +127,6 @@ func Load() OnyxCliConfig {
 			fmt.Fprintf(os.Stderr, "warning: invalid value %q for %s (expected true/false), ignoring\n", v, EnvStreamMarkdown)
 		}
 	}
-
-	return cfg
 }
 
 // Save writes the config to disk, creating parent directories if needed.

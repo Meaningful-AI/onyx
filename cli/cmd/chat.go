@@ -21,7 +21,7 @@ an interactive setup wizard will guide you through configuration.`,
 		Example: `  onyx-cli chat
   onyx-cli`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg := config.Load()
+			cfg := loadConfig(cmd)
 
 			// First-run: onboarding
 			if !config.ConfigExists() || !cfg.IsConfigured() {

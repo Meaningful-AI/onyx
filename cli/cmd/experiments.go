@@ -12,7 +12,7 @@ func newExperimentsCmd() *cobra.Command {
 		Use:   "experiments",
 		Short: "List experimental features and their status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg := config.Load()
+			cfg := loadConfig(cmd)
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), config.ExperimentsText(cfg.Features))
 			return nil
 		},

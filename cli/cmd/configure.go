@@ -69,7 +69,7 @@ Use --dry-run to test the connection without saving the configuration.`,
 				return exitcodes.New(exitcodes.BadRequest, "both --server-url and --api-key are required for non-interactive setup\n  Run 'onyx-cli configure' without flags for interactive setup")
 			}
 
-			cfg := config.Load()
+			cfg := loadConfig(cmd)
 			onboarding.Run(&cfg)
 			return nil
 		},
