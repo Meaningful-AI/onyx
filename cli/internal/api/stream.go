@@ -64,7 +64,7 @@ func (c *Client) SendMessageStream(
 			return
 		}
 
-		req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/chat/send-chat-message", nil)
+		req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/send-chat-message", nil)
 		if err != nil {
 			ch <- models.ErrorEvent{Error: fmt.Sprintf("request error: %v", err), IsRetryable: false}
 			return

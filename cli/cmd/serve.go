@@ -281,6 +281,7 @@ func newServeCmd() *cobra.Command {
 		rateLimitBurst    int
 		rateLimitCache    int
 		serverURL         string
+		apiServerURL      string
 	)
 
 	cmd := &cobra.Command{
@@ -303,11 +304,15 @@ environment variable (the --host-key flag takes precedence).`,
   onyx-cli serve --host 0.0.0.0 --port 2222
   onyx-cli serve --idle-timeout 30m --max-session-timeout 2h
   onyx-cli serve --server-url https://my-onyx.example.com
+  onyx-cli serve --api-server-url http://api_server:8080  # bypass nginx
   onyx-cli serve --config-file /etc/onyx-cli/config.json  # global flag`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serverCfg := loadConfig(cmd)
 			if cmd.Flags().Changed("server-url") {
 				serverCfg.ServerURL = serverURL
+			}
+			if cmd.Flags().Changed("api-server-url") {
+				serverCfg.InternalURL = apiServerURL
 			}
 			if serverCfg.ServerURL == "" {
 				return exitcodes.New(exitcodes.NotConfigured, "server URL is not configured\n  Run: onyx-cli configure")
@@ -454,6 +459,8 @@ environment variable (the --host-key flag takes precedence).`,
 	)
 	cmd.Flags().StringVar(&serverURL, "server-url", "",
 		"Onyx server URL (overrides config file and $"+config.EnvServerURL+")")
+	cmd.Flags().StringVar(&apiServerURL, "api-server-url", "",
+		"API server URL for direct access, bypassing nginx (overrides $"+config.EnvInternalURL+")")
 
 	return cmd
 }

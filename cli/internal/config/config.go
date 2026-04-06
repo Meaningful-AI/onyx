@@ -10,6 +10,7 @@ import (
 
 const (
 	EnvServerURL      = "ONYX_SERVER_URL"
+	EnvInternalURL    = "ONYX_INTERNAL_URL"
 	EnvAPIKey         = "ONYX_API_KEY"
 	EnvAgentID        = "ONYX_PERSONA_ID"
 	EnvSSHHostKey     = "ONYX_SSH_HOST_KEY"
@@ -27,6 +28,7 @@ type Features struct {
 // OnyxCliConfig holds the CLI configuration.
 type OnyxCliConfig struct {
 	ServerURL      string   `json:"server_url"`
+	InternalURL    string   `json:"internal_url,omitempty"`
 	APIKey         string   `json:"api_key"`
 	DefaultAgentID int      `json:"default_persona_id"`
 	Features       Features `json:"features,omitempty"`
@@ -111,6 +113,9 @@ func Load(path ...string) OnyxCliConfig {
 func applyEnvOverrides(cfg *OnyxCliConfig) {
 	if v := os.Getenv(EnvServerURL); v != "" {
 		cfg.ServerURL = v
+	}
+	if v := os.Getenv(EnvInternalURL); v != "" {
+		cfg.InternalURL = v
 	}
 	if v := os.Getenv(EnvAPIKey); v != "" {
 		cfg.APIKey = v

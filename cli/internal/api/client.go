@@ -20,14 +20,20 @@ import (
 
 // Client is the Onyx API client.
 type Client struct {
-	baseURL        string
+	serverURL      string       // root server URL (for reachability checks)
+	baseURL        string       // API base URL (includes /api when going through nginx)
 	apiKey         string
 	httpClient     *http.Client // default 30s timeout for quick requests
 	longHTTPClient *http.Client // 5min timeout for streaming/uploads
 }
 
 // NewClient creates a new API client from config.
+//
+// When InternalURL is set, requests go directly to the API server (no /api
+// prefix needed — mirrors INTERNAL_URL in the web server). Otherwise,
+// requests go through the nginx proxy at ServerURL which strips /api.
 func NewClient(cfg config.OnyxCliConfig) *Client {
+	baseURL := apiBaseURL(cfg)
 	var transport *http.Transport
 	if t, ok := http.DefaultTransport.(*http.Transport); ok {
 		transport = t.Clone()
@@ -35,8 +41,9 @@ func NewClient(cfg config.OnyxCliConfig) *Client {
 		transport = &http.Transport{}
 	}
 	return &Client{
-		baseURL: strings.TrimRight(cfg.ServerURL, "/"),
-		apiKey:  cfg.APIKey,
+		serverURL: strings.TrimRight(cfg.ServerURL, "/"),
+		baseURL:   baseURL,
+		apiKey:    cfg.APIKey,
 		httpClient: &http.Client{
 			Timeout:   30 * time.Second,
 			Transport: transport,
@@ -48,9 +55,20 @@ func NewClient(cfg config.OnyxCliConfig) *Client {
 	}
 }
 
+// apiBaseURL returns the base URL for API requests. When InternalURL is set,
+// it points directly at the API server. Otherwise it goes through the nginx
+// proxy at ServerURL/api.
+func apiBaseURL(cfg config.OnyxCliConfig) string {
+	if cfg.InternalURL != "" {
+		return strings.TrimRight(cfg.InternalURL, "/")
+	}
+	return strings.TrimRight(cfg.ServerURL, "/") + "/api"
+}
+
 // UpdateConfig replaces the client's config.
 func (c *Client) UpdateConfig(cfg config.OnyxCliConfig) {
-	c.baseURL = strings.TrimRight(cfg.ServerURL, "/")
+	c.serverURL = strings.TrimRight(cfg.ServerURL, "/")
+	c.baseURL = apiBaseURL(cfg)
 	c.apiKey = cfg.APIKey
 }
 
@@ -105,15 +123,19 @@ func (c *Client) doJSON(ctx context.Context, method, path string, reqBody any, r
 // TestConnection checks if the server is reachable and credentials are valid.
 // Returns nil on success, or an error with a descriptive message on failure.
 func (c *Client) TestConnection(ctx context.Context) error {
-	// Step 1: Basic reachability
-	req, err := c.newRequest(ctx, "GET", "/", nil)
+	// Step 1: Basic reachability (hit the server root, not the API prefix)
+	reachURL := c.serverURL
+	if reachURL == "" {
+		reachURL = c.baseURL
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", reachURL+"/", nil)
 	if err != nil {
-		return fmt.Errorf("cannot connect to %s: %w", c.baseURL, err)
+		return fmt.Errorf("cannot connect to %s: %w", reachURL, err)
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("cannot connect to %s — is the server running?", c.baseURL)
+		return fmt.Errorf("cannot connect to %s — is the server running?", reachURL)
 	}
 	_ = resp.Body.Close()
 
@@ -127,7 +149,7 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	}
 
 	// Step 2: Authenticated check
-	req2, err := c.newRequest(ctx, "GET", "/api/me", nil)
+	req2, err := c.newRequest(ctx, "GET", "/me", nil)
 	if err != nil {
 		return fmt.Errorf("server reachable but API error: %w", err)
 	}
@@ -167,7 +189,7 @@ func (c *Client) TestConnection(ctx context.Context) error {
 // ListAgents returns visible agents.
 func (c *Client) ListAgents(ctx context.Context) ([]models.AgentSummary, error) {
 	var raw []models.AgentSummary
-	if err := c.doJSON(ctx, "GET", "/api/persona", nil, &raw); err != nil {
+	if err := c.doJSON(ctx, "GET", "/persona", nil, &raw); err != nil {
 		return nil, err
 	}
 	var result []models.AgentSummary
@@ -184,7 +206,7 @@ func (c *Client) ListChatSessions(ctx context.Context) ([]models.ChatSessionDeta
 	var resp struct {
 		Sessions []models.ChatSessionDetails `json:"sessions"`
 	}
-	if err := c.doJSON(ctx, "GET", "/api/chat/get-user-chat-sessions", nil, &resp); err != nil {
+	if err := c.doJSON(ctx, "GET", "/chat/get-user-chat-sessions", nil, &resp); err != nil {
 		return nil, err
 	}
 	return resp.Sessions, nil
@@ -193,7 +215,7 @@ func (c *Client) ListChatSessions(ctx context.Context) ([]models.ChatSessionDeta
 // GetChatSession returns full details for a session.
 func (c *Client) GetChatSession(ctx context.Context, sessionID string) (*models.ChatSessionDetailResponse, error) {
 	var resp models.ChatSessionDetailResponse
-	if err := c.doJSON(ctx, "GET", "/api/chat/get-chat-session/"+sessionID, nil, &resp); err != nil {
+	if err := c.doJSON(ctx, "GET", "/chat/get-chat-session/"+sessionID, nil, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -210,7 +232,7 @@ func (c *Client) RenameChatSession(ctx context.Context, sessionID string, name *
 	var resp struct {
 		NewName string `json:"new_name"`
 	}
-	if err := c.doJSON(ctx, "PUT", "/api/chat/rename-chat-session", payload, &resp); err != nil {
+	if err := c.doJSON(ctx, "PUT", "/chat/rename-chat-session", payload, &resp); err != nil {
 		return "", err
 	}
 	return resp.NewName, nil
@@ -236,7 +258,7 @@ func (c *Client) UploadFile(ctx context.Context, filePath string) (*models.FileD
 	}
 	_ = writer.Close()
 
-	req, err := c.newRequest(ctx, "POST", "/api/user/projects/file/upload", &buf)
+	req, err := c.newRequest(ctx, "POST", "/user/projects/file/upload", &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +297,7 @@ func (c *Client) GetBackendVersion(ctx context.Context) (string, error) {
 	var resp struct {
 		BackendVersion string `json:"backend_version"`
 	}
-	if err := c.doJSON(ctx, "GET", "/api/version", nil, &resp); err != nil {
+	if err := c.doJSON(ctx, "GET", "/version", nil, &resp); err != nil {
 		return "", err
 	}
 	return resp.BackendVersion, nil
@@ -283,7 +305,7 @@ func (c *Client) GetBackendVersion(ctx context.Context) (string, error) {
 
 // StopChatSession sends a stop signal for a streaming session (best-effort).
 func (c *Client) StopChatSession(ctx context.Context, sessionID string) {
-	req, err := c.newRequest(ctx, "POST", "/api/chat/stop-chat-session/"+sessionID, nil)
+	req, err := c.newRequest(ctx, "POST", "/chat/stop-chat-session/"+sessionID, nil)
 	if err != nil {
 		return
 	}
