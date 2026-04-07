@@ -26,7 +26,6 @@ import {
   FieldWrapper,
   ModelsAccessField,
   ModelsField,
-  SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import {
@@ -129,7 +128,6 @@ export default function AzureModal({
             "Target URI must be a valid URL with api-version query parameter and either a deployment name in the path or /openai/responses",
             (value) => (value ? isValidAzureTargetUri(value) : false)
           ),
-        default_model_name: Yup.string().required("Model name is required"),
       })
     : buildDefaultValidationSchema().shape({
         api_key: Yup.string().required("API Key is required"),
@@ -216,16 +214,12 @@ export default function AzureModal({
 
           <FieldSeparator />
 
-          {isOnboarding ? (
-            <SingleDefaultModelField placeholder="E.g. gpt-4o" />
-          ) : (
-            <ModelsField
-              modelConfigurations={modelConfigurations}
-              formikProps={formikProps}
-              recommendedDefaultModel={null}
-              shouldShowAutoUpdateToggle={false}
-            />
-          )}
+          <ModelsField
+            modelConfigurations={modelConfigurations}
+            formikProps={formikProps}
+            recommendedDefaultModel={null}
+            shouldShowAutoUpdateToggle={false}
+          />
 
           {!isOnboarding && (
             <>

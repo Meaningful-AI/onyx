@@ -33,7 +33,6 @@ import {
   ModelsAccessField,
   FieldSeparator,
   FieldWrapper,
-  SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import { toast } from "@/hooks/useToast";
@@ -144,17 +143,13 @@ function BifrostModalInternals({
 
       <FieldSeparator />
 
-      {isOnboarding ? (
-        <SingleDefaultModelField placeholder="E.g. anthropic/claude-sonnet-4-6" />
-      ) : (
-        <ModelsField
-          modelConfigurations={currentModels}
-          formikProps={formikProps}
-          recommendedDefaultModel={null}
-          shouldShowAutoUpdateToggle={false}
-          onRefetch={isFetchDisabled ? undefined : handleFetchModels}
-        />
-      )}
+      <ModelsField
+        modelConfigurations={currentModels}
+        formikProps={formikProps}
+        recommendedDefaultModel={null}
+        shouldShowAutoUpdateToggle={false}
+        onRefetch={isFetchDisabled ? undefined : handleFetchModels}
+      />
 
       {!isOnboarding && (
         <>
@@ -216,7 +211,6 @@ export default function BifrostModal({
   const validationSchema = isOnboarding
     ? Yup.object().shape({
         api_base: Yup.string().required("API Base URL is required"),
-        default_model_name: Yup.string().required("Model name is required"),
       })
     : buildDefaultValidationSchema().shape({
         api_base: Yup.string().required("API Base URL is required"),

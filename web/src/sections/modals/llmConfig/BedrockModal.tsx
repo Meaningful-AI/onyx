@@ -32,7 +32,6 @@ import {
   FieldSeparator,
   FieldWrapper,
   ModelsAccessField,
-  SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import { fetchBedrockModels } from "@/app/admin/configuration/llm/utils";
@@ -287,17 +286,13 @@ function BedrockModalInternals({
 
       <FieldSeparator />
 
-      {isOnboarding ? (
-        <SingleDefaultModelField placeholder="E.g. us.anthropic.claude-sonnet-4-5-v1" />
-      ) : (
-        <ModelsField
-          modelConfigurations={currentModels}
-          formikProps={formikProps}
-          recommendedDefaultModel={null}
-          shouldShowAutoUpdateToggle={false}
-          onRefetch={isFetchDisabled ? undefined : handleFetchModels}
-        />
-      )}
+      <ModelsField
+        modelConfigurations={currentModels}
+        formikProps={formikProps}
+        recommendedDefaultModel={null}
+        shouldShowAutoUpdateToggle={false}
+        onRefetch={isFetchDisabled ? undefined : handleFetchModels}
+      />
 
       {!isOnboarding && (
         <>
@@ -378,7 +373,6 @@ export default function BedrockModal({
 
   const validationSchema = isOnboarding
     ? Yup.object().shape({
-        default_model_name: Yup.string().required("Model name is required"),
         custom_config: Yup.object({
           AWS_REGION_NAME: Yup.string().required("AWS Region is required"),
         }),

@@ -32,7 +32,6 @@ import {
   ModelsAccessField,
   FieldSeparator,
   FieldWrapper,
-  SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import { toast } from "@/hooks/useToast";
@@ -131,17 +130,13 @@ function LiteLLMProxyModalInternals({
 
       <FieldSeparator />
 
-      {isOnboarding ? (
-        <SingleDefaultModelField placeholder="E.g. gpt-4o" />
-      ) : (
-        <ModelsField
-          modelConfigurations={currentModels}
-          formikProps={formikProps}
-          recommendedDefaultModel={null}
-          shouldShowAutoUpdateToggle={false}
-          onRefetch={isFetchDisabled ? undefined : handleFetchModels}
-        />
-      )}
+      <ModelsField
+        modelConfigurations={currentModels}
+        formikProps={formikProps}
+        recommendedDefaultModel={null}
+        shouldShowAutoUpdateToggle={false}
+        onRefetch={isFetchDisabled ? undefined : handleFetchModels}
+      />
 
       {!isOnboarding && (
         <>
@@ -204,7 +199,6 @@ export default function LiteLLMProxyModal({
     ? Yup.object().shape({
         api_key: Yup.string().required("API Key is required"),
         api_base: Yup.string().required("API Base URL is required"),
-        default_model_name: Yup.string().required("Model name is required"),
       })
     : buildDefaultValidationSchema().shape({
         api_key: Yup.string().required("API Key is required"),

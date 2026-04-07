@@ -26,7 +26,6 @@ import {
   FieldSeparator,
   FieldWrapper,
   ModelsAccessField,
-  SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 
@@ -106,7 +105,6 @@ export default function VertexAIModal({
 
   const validationSchema = isOnboarding
     ? Yup.object().shape({
-        default_model_name: Yup.string().required("Model name is required"),
         custom_config: Yup.object({
           vertex_credentials: Yup.string().required(
             "Credentials file is required"
@@ -222,18 +220,14 @@ export default function VertexAIModal({
 
           <FieldSeparator />
 
-          {isOnboarding ? (
-            <SingleDefaultModelField placeholder="E.g. gemini-2.5-pro" />
-          ) : (
-            <ModelsField
-              modelConfigurations={modelConfigurations}
-              formikProps={formikProps}
-              recommendedDefaultModel={
-                wellKnownLLMProvider?.recommended_default_model ?? null
-              }
-              shouldShowAutoUpdateToggle={true}
-            />
-          )}
+          <ModelsField
+            modelConfigurations={modelConfigurations}
+            formikProps={formikProps}
+            recommendedDefaultModel={
+              wellKnownLLMProvider?.recommended_default_model ?? null
+            }
+            shouldShowAutoUpdateToggle={!isOnboarding}
+          />
 
           {!isOnboarding && <ModelsAccessField formikProps={formikProps} />}
         </LLMConfigurationModalWrapper>

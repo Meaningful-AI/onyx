@@ -31,7 +31,6 @@ import {
   ModelsAccessField,
   FieldSeparator,
   FieldWrapper,
-  SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import { fetchModels } from "@/app/admin/configuration/llm/utils";
@@ -165,16 +164,12 @@ function LMStudioFormInternals({
 
       <FieldSeparator />
 
-      {isOnboarding ? (
-        <SingleDefaultModelField placeholder="E.g. llama3.1" />
-      ) : (
-        <ModelsField
-          modelConfigurations={currentModels}
-          formikProps={formikProps}
-          recommendedDefaultModel={null}
-          shouldShowAutoUpdateToggle={false}
-        />
-      )}
+      <ModelsField
+        modelConfigurations={currentModels}
+        formikProps={formikProps}
+        recommendedDefaultModel={null}
+        shouldShowAutoUpdateToggle={false}
+      />
 
       {!isOnboarding && (
         <>
@@ -242,7 +237,6 @@ export default function LMStudioForm({
   const validationSchema = isOnboarding
     ? Yup.object().shape({
         api_base: Yup.string().required("API Base URL is required"),
-        default_model_name: Yup.string().required("Model name is required"),
       })
     : buildDefaultValidationSchema().shape({
         api_base: Yup.string().required("API Base URL is required"),

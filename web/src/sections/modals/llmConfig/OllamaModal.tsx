@@ -29,7 +29,6 @@ import {
   DisplayNameField,
   ModelsAccessField,
   FieldSeparator,
-  SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import { fetchOllamaModels } from "@/app/admin/configuration/llm/utils";
@@ -185,16 +184,12 @@ function OllamaModalInternals({
 
       <FieldSeparator />
 
-      {isOnboarding ? (
-        <SingleDefaultModelField placeholder="E.g. llama3.1" />
-      ) : (
-        <ModelsField
-          modelConfigurations={currentModels}
-          formikProps={formikProps}
-          recommendedDefaultModel={null}
-          shouldShowAutoUpdateToggle={false}
-        />
-      )}
+      <ModelsField
+        modelConfigurations={currentModels}
+        formikProps={formikProps}
+        recommendedDefaultModel={null}
+        shouldShowAutoUpdateToggle={false}
+      />
 
       {!isOnboarding && (
         <>
@@ -261,7 +256,6 @@ export default function OllamaModal({
   const validationSchema = isOnboarding
     ? Yup.object().shape({
         api_base: Yup.string().required("API Base URL is required"),
-        default_model_name: Yup.string().required("Model name is required"),
       })
     : buildDefaultValidationSchema().shape({
         api_base: Yup.string().required("API Base URL is required"),

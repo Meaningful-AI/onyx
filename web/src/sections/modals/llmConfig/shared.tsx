@@ -111,26 +111,6 @@ export function APIKeyField({
   );
 }
 
-// ─── SingleDefaultModelField ─────────────────────────────────────────────────
-
-export interface SingleDefaultModelFieldProps {
-  placeholder?: string;
-}
-
-export function SingleDefaultModelField({
-  placeholder = "E.g. gpt-4o",
-}: SingleDefaultModelFieldProps) {
-  return (
-    <InputLayouts.Vertical
-      name="default_model_name"
-      title="Default Model"
-      description="The model to use by default for this provider unless otherwise specified."
-    >
-      <InputTypeInField name="default_model_name" placeholder={placeholder} />
-    </InputLayouts.Vertical>
-  );
-}
-
 // ─── ModelsAccessField ──────────────────────────────────────────────────────
 
 /** Prefix used to distinguish group IDs from agent IDs in the combobox. */

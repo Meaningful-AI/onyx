@@ -22,7 +22,6 @@ import {
   DisplayNameField,
   FieldSeparator,
   ModelsAccessField,
-  SingleDefaultModelField,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 
@@ -83,7 +82,6 @@ export default function OpenAIModal({
   const validationSchema = isOnboarding
     ? Yup.object().shape({
         api_key: Yup.string().required("API Key is required"),
-        default_model_name: Yup.string().required("Model name is required"),
       })
     : buildDefaultValidationSchema().shape({
         api_key: Yup.string().required("API Key is required"),
@@ -149,18 +147,14 @@ export default function OpenAIModal({
           )}
 
           <FieldSeparator />
-          {isOnboarding ? (
-            <SingleDefaultModelField placeholder="E.g. gpt-5.2" />
-          ) : (
-            <ModelsField
-              modelConfigurations={modelConfigurations}
-              formikProps={formikProps}
-              recommendedDefaultModel={
-                wellKnownLLMProvider?.recommended_default_model ?? null
-              }
-              shouldShowAutoUpdateToggle={true}
-            />
-          )}
+          <ModelsField
+            modelConfigurations={modelConfigurations}
+            formikProps={formikProps}
+            recommendedDefaultModel={
+              wellKnownLLMProvider?.recommended_default_model ?? null
+            }
+            shouldShowAutoUpdateToggle={!isOnboarding}
+          />
 
           {!isOnboarding && (
             <>
