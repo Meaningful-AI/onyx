@@ -56,6 +56,8 @@ export interface LLMProviderView {
   api_base: string | null;
   api_version: string | null;
   custom_config: { [key: string]: string } | null;
+  /** Which modal UI was used to create this provider. Null for legacy providers. */
+  modal_name: LLMProviderName | null;
   is_public: boolean;
   is_auto_mode: boolean;
   groups: number[];

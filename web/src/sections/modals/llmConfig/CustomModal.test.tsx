@@ -7,6 +7,7 @@
 
 import { render, screen, setupUser, waitFor } from "@tests/setup/test-utils";
 import CustomModal from "@/sections/modals/llmConfig/CustomModal";
+import { LLMProviderName } from "@/interfaces/llm";
 import { toast } from "@/hooks/useToast";
 
 // Mock SWR's mutate function and useSWR
@@ -229,6 +230,7 @@ describe("Custom LLM Provider Configuration Workflow", () => {
       groups: [],
       personas: [],
       deployment_name: null,
+      modal_name: LLMProviderName.CUSTOM,
     };
 
     // Mock POST /api/admin/llm/test
@@ -310,6 +312,7 @@ describe("Custom LLM Provider Configuration Workflow", () => {
       groups: [],
       personas: [],
       deployment_name: null,
+      modal_name: LLMProviderName.CUSTOM,
     };
 
     // Mock POST /api/admin/llm/test

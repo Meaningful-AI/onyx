@@ -102,6 +102,7 @@ from onyx.kg.models import KGEntityTypeAttributes
 from onyx.utils.logger import setup_logger
 from onyx.utils.special_types import JSON_ro
 from onyx.file_store.models import FileDescriptor
+from onyx.llm.constants import LlmProviderModal
 from onyx.llm.override_models import LLMOverride
 from onyx.llm.override_models import PromptOverride
 from onyx.kg.models import KGStage
@@ -2968,6 +2969,13 @@ class LLMProvider(Base):
     # (e.g. `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, etc. for bedrock)
     custom_config: Mapped[dict[str, str] | None] = mapped_column(
         postgresql.JSONB(), nullable=True
+    )
+
+    # Which modal UI was used to create this provider configuration.
+    # Used by the frontend to reopen the correct modal for editing.
+    # Null for providers created before this column existed (fall back to `provider`).
+    modal_name: Mapped[LlmProviderModal | None] = mapped_column(
+        Enum(LlmProviderModal, native_enum=False), nullable=True
     )
 
     # Deprecated: use LLMModelFlow with CHAT flow type instead

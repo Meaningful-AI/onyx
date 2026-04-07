@@ -22,50 +22,32 @@ export function getModalForExistingProvider(
     defaultModelName,
   };
 
-  const hasCustomConfig = provider.custom_config != null;
+  // Use modal_name if set (providers created after this field was added).
+  // Fall back to provider name for legacy providers (modal_name is null).
+  const routingKey = provider.modal_name ?? provider.provider;
 
-  switch (provider.provider) {
-    // These providers don't use custom_config themselves, so a non-null
-    // custom_config means the provider was created via CustomModal.
+  switch (routingKey) {
     case LLMProviderName.OPENAI:
-      return hasCustomConfig ? (
-        <CustomModal {...props} />
-      ) : (
-        <OpenAIModal {...props} />
-      );
+      return <OpenAIModal {...props} />;
     case LLMProviderName.ANTHROPIC:
-      return hasCustomConfig ? (
-        <CustomModal {...props} />
-      ) : (
-        <AnthropicModal {...props} />
-      );
-    case LLMProviderName.AZURE:
-      return hasCustomConfig ? (
-        <CustomModal {...props} />
-      ) : (
-        <AzureModal {...props} />
-      );
-    case LLMProviderName.OPENROUTER:
-      return hasCustomConfig ? (
-        <CustomModal {...props} />
-      ) : (
-        <OpenRouterModal {...props} />
-      );
-
-    // These providers legitimately store settings in custom_config,
-    // so always use their dedicated modals.
+      return <AnthropicModal {...props} />;
     case LLMProviderName.OLLAMA_CHAT:
       return <OllamaModal {...props} />;
+    case LLMProviderName.AZURE:
+      return <AzureModal {...props} />;
     case LLMProviderName.VERTEX_AI:
       return <VertexAIModal {...props} />;
     case LLMProviderName.BEDROCK:
       return <BedrockModal {...props} />;
+    case LLMProviderName.OPENROUTER:
+      return <OpenRouterModal {...props} />;
     case LLMProviderName.LM_STUDIO:
       return <LMStudioForm {...props} />;
     case LLMProviderName.LITELLM_PROXY:
       return <LiteLLMProxyModal {...props} />;
     case LLMProviderName.BIFROST:
       return <BifrostModal {...props} />;
+    case LLMProviderName.CUSTOM:
     default:
       return <CustomModal {...props} />;
   }
