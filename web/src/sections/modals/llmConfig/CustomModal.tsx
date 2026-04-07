@@ -368,7 +368,6 @@ export default function CustomModal({
               name="api_base"
               title="API Base URL"
               suffix="optional"
-              subDescription="Override the default base URL for this provider."
             >
               <InputTypeInField name="api_base" placeholder="https://" />
             </InputLayouts.Vertical>
@@ -379,7 +378,6 @@ export default function CustomModal({
               name="api_version"
               title="API Version"
               suffix="optional"
-              subDescription="API version to use (e.g. for Azure OpenAI)."
             >
               <InputTypeInField name="api_version" />
             </InputLayouts.Vertical>
