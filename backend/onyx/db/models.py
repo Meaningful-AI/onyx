@@ -102,7 +102,6 @@ from onyx.kg.models import KGEntityTypeAttributes
 from onyx.utils.logger import setup_logger
 from onyx.utils.special_types import JSON_ro
 from onyx.file_store.models import FileDescriptor
-from onyx.llm.constants import LlmProviderModal
 from onyx.llm.override_models import LLMOverride
 from onyx.llm.override_models import PromptOverride
 from onyx.kg.models import KGStage
@@ -2971,11 +2970,10 @@ class LLMProvider(Base):
         postgresql.JSONB(), nullable=True
     )
 
-    # Which modal UI was used to create this provider configuration.
-    # Used by the frontend to reopen the correct modal for editing.
-    # Null for providers created before this column existed (fall back to `provider`).
-    modal_name: Mapped[LlmProviderModal | None] = mapped_column(
-        Enum(LlmProviderModal, native_enum=False), nullable=True
+    # True if this provider was created via the CustomModal UI.
+    # Used by the frontend to route to the correct modal for editing.
+    is_custom_provider: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
     )
 
     # Deprecated: use LLMModelFlow with CHAT flow type instead

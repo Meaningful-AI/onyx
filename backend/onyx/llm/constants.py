@@ -7,26 +7,6 @@ Centralized constants for LLM providers, vendors, and display names.
 from enum import Enum
 
 
-# Identifies which modal UI was used to create a provider configuration.
-# This is stored in the DB and used by the frontend for modal routing.
-# Values match the frontend's LLMProviderName enum.
-class LlmProviderModal(str, Enum):
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    GOOGLE = "google"
-    BEDROCK = "bedrock"
-    BEDROCK_CONVERSE = "bedrock_converse"
-    VERTEX_AI = "vertex_ai"
-    OPENROUTER = "openrouter"
-    AZURE = "azure"
-    OLLAMA_CHAT = "ollama_chat"
-    LM_STUDIO = "lm_studio"
-    MISTRAL = "mistral"
-    LITELLM_PROXY = "litellm_proxy"
-    BIFROST = "bifrost"
-    CUSTOM = "custom"
-
-
 # Provider names
 class LlmProviderNames(str, Enum):
     """

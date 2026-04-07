@@ -19,7 +19,6 @@ from onyx.db.models import SearchSettings
 from onyx.db.models import Tool as ToolModel
 from onyx.db.models import User
 from onyx.db.models import User__UserGroup
-from onyx.llm.constants import LlmProviderModal
 from onyx.llm.utils import model_supports_image_input
 from onyx.llm.well_known_providers.auto_update_models import LLMRecommendations
 from onyx.server.manage.embedding.models import CloudEmbeddingProvider
@@ -255,10 +254,10 @@ def upsert_llm_provider(
     existing_llm_provider.api_version = llm_provider_upsert_request.api_version
     existing_llm_provider.custom_config = custom_config
 
-    # Set modal_name on creation; preserve the existing value on update.
-    if not existing_llm_provider.id and llm_provider_upsert_request.modal_name:
-        existing_llm_provider.modal_name = LlmProviderModal(
-            llm_provider_upsert_request.modal_name
+    # Set is_custom_provider on creation; preserve on update.
+    if not existing_llm_provider.id:
+        existing_llm_provider.is_custom_provider = (
+            llm_provider_upsert_request.is_custom_provider
         )
 
     existing_llm_provider.is_public = llm_provider_upsert_request.is_public

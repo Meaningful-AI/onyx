@@ -216,7 +216,7 @@ export default function CustomModal({
     ),
     ...(isOnboarding ? buildOnboardingInitialValues() : {}),
     provider: existingLlmProvider?.provider ?? "",
-    modal_name: "custom",
+    is_custom_provider: true,
     api_key: existingLlmProvider?.api_key ?? "",
     api_base: existingLlmProvider?.api_base ?? "",
     api_version: existingLlmProvider?.api_version ?? "",

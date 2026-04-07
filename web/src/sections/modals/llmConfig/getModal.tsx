@@ -22,11 +22,11 @@ export function getModalForExistingProvider(
     defaultModelName,
   };
 
-  // Use modal_name if set (providers created after this field was added).
-  // Fall back to provider name for legacy providers (modal_name is null).
-  const routingKey = provider.modal_name ?? provider.provider;
+  if (provider.is_custom_provider) {
+    return <CustomModal {...props} />;
+  }
 
-  switch (routingKey) {
+  switch (provider.provider) {
     case LLMProviderName.OPENAI:
       return <OpenAIModal {...props} />;
     case LLMProviderName.ANTHROPIC:
@@ -47,7 +47,6 @@ export function getModalForExistingProvider(
       return <LiteLLMProxyModal {...props} />;
     case LLMProviderName.BIFROST:
       return <BifrostModal {...props} />;
-    case LLMProviderName.CUSTOM:
     default:
       return <CustomModal {...props} />;
   }

@@ -10,7 +10,6 @@ from pydantic import Field
 from pydantic import field_validator
 
 from onyx.db.enums import LLMModelFlowType
-from onyx.llm.constants import LlmProviderModal
 from onyx.llm.utils import get_max_input_tokens
 from onyx.llm.utils import litellm_thinks_model_supports_image_input
 from onyx.llm.utils import model_is_reasoning_model
@@ -82,8 +81,7 @@ class LLMProviderDescriptor(BaseModel):
             model_configurations=filter_model_configurations(
                 llm_provider_model.model_configurations,
                 provider,
-                use_stored_display_name=llm_provider_model.modal_name
-                == LlmProviderModal.CUSTOM,
+                use_stored_display_name=llm_provider_model.is_custom_provider,
             ),
         )
 
@@ -95,8 +93,7 @@ class LLMProvider(BaseModel):
     api_base: str | None = None
     api_version: str | None = None
     custom_config: dict[str, str] | None = None
-    # Which modal UI was used to create this provider. Used for frontend routing.
-    modal_name: str | None = None
+    is_custom_provider: bool = False
     is_public: bool = True
     is_auto_mode: bool = False
     groups: list[int] = Field(default_factory=list)
@@ -156,11 +153,7 @@ class LLMProviderView(LLMProvider):
             api_base=llm_provider_model.api_base,
             api_version=llm_provider_model.api_version,
             custom_config=llm_provider_model.custom_config,
-            modal_name=(
-                llm_provider_model.modal_name.value
-                if llm_provider_model.modal_name
-                else None
-            ),
+            is_custom_provider=llm_provider_model.is_custom_provider,
             is_public=llm_provider_model.is_public,
             is_auto_mode=llm_provider_model.is_auto_mode,
             groups=groups,
@@ -169,8 +162,7 @@ class LLMProviderView(LLMProvider):
             model_configurations=filter_model_configurations(
                 llm_provider_model.model_configurations,
                 provider,
-                use_stored_display_name=llm_provider_model.modal_name
-                == LlmProviderModal.CUSTOM,
+                use_stored_display_name=llm_provider_model.is_custom_provider,
             ),
         )
 
