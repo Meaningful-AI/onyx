@@ -89,7 +89,7 @@ def _load_raw() -> dict[str, Any] | None:
     if not MOCK_CONNECTOR_FILE_PATH:
         return None
     with open(MOCK_CONNECTOR_FILE_PATH) as f:
-        return json.load(f)  # type: ignore[no-any-return]
+        return json.load(f)
 
 
 def load_mock_data() -> dict[str, Any] | None:
@@ -104,7 +104,7 @@ def load_mock_data() -> dict[str, Any] | None:
     if isinstance(raw, list):
         raw = {_KEY_INDEXING_STATUSES: raw}
 
-    return _resolve_time_offsets(raw)  # type: ignore[return-value]
+    return _resolve_time_offsets(raw)
 
 
 def get_mock_indexing_statuses(

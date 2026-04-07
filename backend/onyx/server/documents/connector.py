@@ -1279,16 +1279,16 @@ def get_connector_indexing_status(
     # Process editable cc_pairs
     editable_statuses: list[ConnectorIndexingStatusLite] = []
     for cc_pair in editable_cc_pairs:
-        status = build_connector_indexing_status(cc_pair, True)
-        if status:
-            editable_statuses.append(status)
+        editable_status = build_connector_indexing_status(cc_pair, True)
+        if editable_status:
+            editable_statuses.append(editable_status)
 
     # Process non-editable cc_pairs
     non_editable_statuses: list[ConnectorIndexingStatusLite] = []
     for cc_pair in non_editable_cc_pairs:
-        status = build_connector_indexing_status(cc_pair, False)
-        if status:
-            non_editable_statuses.append(status)
+        non_editable_status = build_connector_indexing_status(cc_pair, False)
+        if non_editable_status:
+            non_editable_statuses.append(non_editable_status)
 
     # Process federated connectors
     federated_statuses: list[FederatedConnectorStatus] = []
@@ -1341,13 +1341,14 @@ def get_connector_indexing_status(
         editable_statuses + non_editable_statuses + federated_statuses
     ):
         if isinstance(connector_status, FederatedConnectorStatus):
-            source = connector_status.source.to_non_federated_source()
+            maybe_source = connector_status.source.to_non_federated_source()
         else:
-            source = connector_status.source
+            maybe_source = connector_status.source
 
         # Skip if source is None (federated connectors without mapping)
-        if source is None:
+        if maybe_source is None:
             continue
+        source = maybe_source
 
         if source not in source_to_summary:
             source_to_summary[source] = SourceSummary(
@@ -1382,26 +1383,27 @@ def get_connector_indexing_status(
         editable_statuses + non_editable_statuses + federated_statuses
     ):
         if isinstance(connector_status, FederatedConnectorStatus):
-            source = connector_status.source.to_non_federated_source()
+            maybe_source = connector_status.source.to_non_federated_source()
         else:
-            source = connector_status.source
+            maybe_source = connector_status.source
 
         # Skip if source is None (federated connectors without mapping)
-        if source is None:
+        if maybe_source is None:
             continue
+        source = maybe_source
 
         if source not in source_to_all_statuses:
             source_to_all_statuses[source] = []
         source_to_all_statuses[source].append(connector_status)
 
     # Create paginated response objects by source
-    response_list: list[ConnectorIndexingStatusLiteResponse] = []
+    paginated_responses: list[ConnectorIndexingStatusLiteResponse] = []
 
     source_list = list(source_to_all_statuses.keys())
     source_list.sort()
 
     for source in source_list:
-        statuses = source_to_all_statuses[source]
+        all_statuses = source_to_all_statuses[source]
         # Get current page for this source (default to page 1, 1-indexed)
         current_page = request.source_to_page.get(source, 1)
 
@@ -1410,24 +1412,26 @@ def get_connector_indexing_status(
         end_idx = start_idx + _INDEXING_STATUS_PAGE_SIZE
 
         if request.get_all_connectors:
-            page_statuses = statuses
+            page_statuses = all_statuses
         else:
             # Get the page slice for this source
-            page_statuses = statuses[start_idx:end_idx]
+            page_statuses = all_statuses[start_idx:end_idx]
 
         # Create response object for this source
         if page_statuses:  # Only include sources that have data on this page
-            response_list.append(
+            paginated_responses.append(
                 ConnectorIndexingStatusLiteResponse(
                     source=source,
                     summary=source_to_summary[source],
                     current_page=current_page,
-                    total_pages=math.ceil(len(statuses) / _INDEXING_STATUS_PAGE_SIZE),
+                    total_pages=math.ceil(
+                        len(all_statuses) / _INDEXING_STATUS_PAGE_SIZE
+                    ),
                     indexing_statuses=page_statuses,
                 )
             )
 
-    return response_list
+    return paginated_responses
 
 
 def _get_connector_indexing_status_lite(
