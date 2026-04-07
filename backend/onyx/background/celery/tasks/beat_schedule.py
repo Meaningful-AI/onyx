@@ -14,6 +14,8 @@ from onyx.configs.constants import ONYX_CLOUD_CELERY_TASK_PREFIX
 from onyx.configs.constants import OnyxCeleryPriority
 from onyx.configs.constants import OnyxCeleryQueues
 from onyx.configs.constants import OnyxCeleryTask
+from onyx.server.features.build.configs import SANDBOX_BACKEND
+from onyx.server.features.build.configs import SandboxBackend
 from shared_configs.configs import MULTI_TENANT
 
 # choosing 15 minutes because it roughly gives us enough time to process many tasks
@@ -132,28 +134,38 @@ beat_task_templates: list[dict] = [
             "queue": OnyxCeleryQueues.MONITORING,
         },
     },
-    # Sandbox cleanup tasks
-    {
-        "name": "cleanup-idle-sandboxes",
-        "task": OnyxCeleryTask.CLEANUP_IDLE_SANDBOXES,
-        "schedule": timedelta(minutes=1),
-        "options": {
-            "priority": OnyxCeleryPriority.LOW,
-            "expires": BEAT_EXPIRES_DEFAULT,
-            "queue": OnyxCeleryQueues.SANDBOX,
-        },
-    },
-    {
-        "name": "cleanup-old-snapshots",
-        "task": OnyxCeleryTask.CLEANUP_OLD_SNAPSHOTS,
-        "schedule": timedelta(hours=24),
-        "options": {
-            "priority": OnyxCeleryPriority.LOW,
-            "expires": BEAT_EXPIRES_DEFAULT,
-            "queue": OnyxCeleryQueues.SANDBOX,
-        },
-    },
 ]
+
+# Sandbox cleanup tasks only do meaningful work when running on the kubernetes sandbox
+# backend. With the default `local` backend they fan out per-tenant and immediately no-op,
+# which generates significant useless load in the cloud (the per-tenant generator runs
+# `cleanup-idle-sandboxes` every ~8 minutes against every tenant). Only schedule them
+# when the kubernetes backend is actually in use.
+if SANDBOX_BACKEND == SandboxBackend.KUBERNETES:
+    beat_task_templates.extend(
+        [
+            {
+                "name": "cleanup-idle-sandboxes",
+                "task": OnyxCeleryTask.CLEANUP_IDLE_SANDBOXES,
+                "schedule": timedelta(minutes=1),
+                "options": {
+                    "priority": OnyxCeleryPriority.LOW,
+                    "expires": BEAT_EXPIRES_DEFAULT,
+                    "queue": OnyxCeleryQueues.SANDBOX,
+                },
+            },
+            {
+                "name": "cleanup-old-snapshots",
+                "task": OnyxCeleryTask.CLEANUP_OLD_SNAPSHOTS,
+                "schedule": timedelta(hours=24),
+                "options": {
+                    "priority": OnyxCeleryPriority.LOW,
+                    "expires": BEAT_EXPIRES_DEFAULT,
+                    "queue": OnyxCeleryQueues.SANDBOX,
+                },
+            },
+        ]
+    )
 
 if ENTERPRISE_EDITION_ENABLED:
     beat_task_templates.extend(
