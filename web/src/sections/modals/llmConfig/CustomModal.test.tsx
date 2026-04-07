@@ -500,9 +500,7 @@ describe("Custom LLM Provider Configuration Workflow", () => {
     await user.click(addLineButton);
 
     // Fill in custom config key-value pair
-    const keyInputs = screen.getAllByPlaceholderText(
-      "e.g. api_base, api_version, api_key"
-    );
+    const keyInputs = screen.getAllByRole("textbox", { name: /Key \d+/ });
     const valueInputs = screen.getAllByRole("textbox", { name: /Value \d+/ });
 
     await user.type(keyInputs[0]!, "CLOUDFLARE_ACCOUNT_ID");

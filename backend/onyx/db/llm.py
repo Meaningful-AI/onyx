@@ -236,14 +236,15 @@ def upsert_llm_provider(
         db_session.add(existing_llm_provider)
 
     # Filter out empty strings and None values from custom_config to allow
-    # providers like Bedrock to fall back to IAM roles when credentials are not provided
+    # providers like Bedrock to fall back to IAM roles when credentials are not provided.
+    # NOTE: An empty dict ({}) is preserved as-is — it signals that the provider was
+    # created via the custom modal and must be reopened with CustomModal, not a
+    # provider-specific modal. Only None means "no custom config at all".
     custom_config = llm_provider_upsert_request.custom_config
     if custom_config:
         custom_config = {
             k: v for k, v in custom_config.items() if v is not None and v.strip() != ""
         }
-        # Set to None if the dict is empty after filtering
-        custom_config = custom_config or None
 
     api_base = llm_provider_upsert_request.api_base or None
     existing_llm_provider.provider = llm_provider_upsert_request.provider
