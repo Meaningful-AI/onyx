@@ -22,27 +22,44 @@ export function getModalForExistingProvider(
     defaultModelName,
   };
 
-  // A non-null custom_config (even {}) means this provider was created via the
-  // custom modal and must always be reopened with CustomModal.
-  if (provider.custom_config != null) {
-    return <CustomModal {...props} />;
-  }
+  const hasCustomConfig = provider.custom_config != null;
 
   switch (provider.provider) {
+    // These providers don't use custom_config themselves, so a non-null
+    // custom_config means the provider was created via CustomModal.
     case LLMProviderName.OPENAI:
-      return <OpenAIModal {...props} />;
+      return hasCustomConfig ? (
+        <CustomModal {...props} />
+      ) : (
+        <OpenAIModal {...props} />
+      );
     case LLMProviderName.ANTHROPIC:
-      return <AnthropicModal {...props} />;
+      return hasCustomConfig ? (
+        <CustomModal {...props} />
+      ) : (
+        <AnthropicModal {...props} />
+      );
+    case LLMProviderName.AZURE:
+      return hasCustomConfig ? (
+        <CustomModal {...props} />
+      ) : (
+        <AzureModal {...props} />
+      );
+    case LLMProviderName.OPENROUTER:
+      return hasCustomConfig ? (
+        <CustomModal {...props} />
+      ) : (
+        <OpenRouterModal {...props} />
+      );
+
+    // These providers legitimately store settings in custom_config,
+    // so always use their dedicated modals.
     case LLMProviderName.OLLAMA_CHAT:
       return <OllamaModal {...props} />;
-    case LLMProviderName.AZURE:
-      return <AzureModal {...props} />;
     case LLMProviderName.VERTEX_AI:
       return <VertexAIModal {...props} />;
     case LLMProviderName.BEDROCK:
       return <BedrockModal {...props} />;
-    case LLMProviderName.OPENROUTER:
-      return <OpenRouterModal {...props} />;
     case LLMProviderName.LM_STUDIO:
       return <LMStudioForm {...props} />;
     case LLMProviderName.LITELLM_PROXY:
