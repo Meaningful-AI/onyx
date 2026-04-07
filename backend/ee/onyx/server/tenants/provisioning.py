@@ -101,10 +101,17 @@ async def get_or_provision_tenant(
         tenant_id = await get_available_tenant()
 
         if tenant_id:
-            from onyx.db.engine.tenant_host_mapping import get_host_index_for_tenant
+            from onyx.db.engine.tenant_host_mapping import compute_host_index
+            from onyx.db.engine.tenant_host_mapping import get_host_index_from_redis
+            from onyx.db.engine.tenant_host_mapping import set_tenant_host_in_redis
 
             _tenant_id: str = tenant_id
-            _host_index = get_host_index_for_tenant(_tenant_id)
+            # Pool creator seeds Redis at creation time.  Don't fall through
+            # to the CP — it doesn't know about this tenant yet.
+            _host_index = get_host_index_from_redis(_tenant_id)
+            if _host_index is None:
+                _host_index = compute_host_index(datetime.now(timezone.utc))
+                set_tenant_host_in_redis(_tenant_id, _host_index)
             loop = asyncio.get_running_loop()
             try:
                 await loop.run_in_executor(
@@ -250,12 +257,16 @@ async def rollback_tenant_provisioning(tenant_id: str) -> None:
     """
     logger.info(f"Rolling back tenant provisioning for tenant_id: {tenant_id}")
 
+    from onyx.db.engine.tenant_host_mapping import get_host_index_from_redis
+
+    host_index = get_host_index_from_redis(tenant_id) or 0
+
     # Track if any part of the rollback fails
     rollback_errors = []
 
-    # 1. Try to drop the tenant's schema
+    # 1. Try to drop the tenant's schema on the correct host
     try:
-        drop_schema(tenant_id)
+        drop_schema(tenant_id, host_index=host_index)
         logger.info(f"Successfully dropped schema for tenant {tenant_id}")
     except Exception as e:
         error_msg = f"Failed to drop schema for tenant {tenant_id}: {str(e)}"

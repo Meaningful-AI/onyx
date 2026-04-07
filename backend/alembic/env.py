@@ -227,16 +227,13 @@ def provide_iam_token_for_alembic(
     cparams: Any,
 ) -> None:
     if USE_IAM_AUTH:
-        # Database connection settings
         region = AWS_REGION_NAME
-        host = POSTGRES_HOST
-        port = POSTGRES_PORT
-        user = POSTGRES_USER
+        host = cparams.get("host") or POSTGRES_HOST
+        port = str(cparams.get("port", POSTGRES_PORT))
+        user = cparams.get("user") or POSTGRES_USER
 
-        # Get IAM authentication token
         token = get_iam_auth_token(host, port, user, region)
 
-        # For Alembic / SQLAlchemy in this context, set SSL and password
         cparams["password"] = token
         cparams["ssl"] = ssl_context
 
@@ -312,18 +309,32 @@ async def run_async_migrations() -> None:
     SqlEngine.init_all_engines(pool_size=20, max_overflow=5)
 
     if schemas:
-        # Specific schemas: migrate on every host (the schema only physically
-        # exists on one of them, but CREATE SCHEMA IF NOT EXISTS is harmless).
-        for host_idx, host in enumerate(POSTGRES_HOSTS):
-            engine = _create_async_engine_for_host(host)
-            await _migrate_schemas(
-                engine,
-                schemas,
-                create_schema,
-                continue_on_error,
-                label=f"host={host_idx}",
-            )
-            await engine.dispose()
+        # Specific schemas target a single host.  When called programmatically
+        # (e.g. schema_management.run_alembic_migrations) the sqlalchemy.url
+        # in the Alembic config already points at the correct host.  When
+        # called from the CLI, default to host 0.  We must NOT iterate every
+        # host — that would duplicate the schema across RDS instances.
+        url_override = config.get_main_option("sqlalchemy.url")
+        if url_override:
+            engine = create_async_engine(url_override, poolclass=pool.NullPool)
+            if USE_IAM_AUTH:
+
+                @event.listens_for(engine.sync_engine, "do_connect")
+                def _iam_specific(
+                    dialect: Any, conn_rec: Any, cargs: Any, cparams: Any
+                ) -> None:
+                    provide_iam_token_for_alembic(dialect, conn_rec, cargs, cparams)
+
+        else:
+            engine = _create_async_engine_for_host(POSTGRES_HOSTS[0])
+
+        await _migrate_schemas(
+            engine,
+            schemas,
+            create_schema,
+            continue_on_error,
+        )
+        await engine.dispose()
 
     elif upgrade_all_tenants:
         for host_idx, host in enumerate(POSTGRES_HOSTS):
@@ -380,21 +391,21 @@ def run_migrations_offline() -> None:
     ) = get_schema_options()
 
     if schemas:
-        for host in POSTGRES_HOSTS:
-            url = build_connection_string(host=host)
-            for schema in schemas:
-                logger.info(f"Migrating schema: {schema}")
-                context.configure(
-                    url=url,
-                    target_metadata=target_metadata,  # type: ignore
-                    literal_binds=True,
-                    version_table_schema=schema,
-                    include_schemas=True,
-                    script_location=config.get_main_option("script_location"),
-                    dialect_opts={"paramstyle": "named"},
-                )
-                with context.begin_transaction():
-                    context.run_migrations()
+        url_override = config.get_main_option("sqlalchemy.url")
+        url = url_override or build_connection_string(host=POSTGRES_HOSTS[0])
+        for schema in schemas:
+            logger.info(f"Migrating schema: {schema}")
+            context.configure(
+                url=url,
+                target_metadata=target_metadata,  # type: ignore
+                literal_binds=True,
+                version_table_schema=schema,
+                include_schemas=True,
+                script_location=config.get_main_option("script_location"),
+                dialect_opts={"paramstyle": "named"},
+            )
+            with context.begin_transaction():
+                context.run_migrations()
 
     elif upgrade_all_tenants:
         for host in POSTGRES_HOSTS:
