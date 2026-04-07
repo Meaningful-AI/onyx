@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { Formik, FormikProps } from "formik";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
@@ -32,10 +32,8 @@ import {
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import { fetchOllamaModels } from "@/app/admin/configuration/llm/utils";
-import debounce from "lodash/debounce";
 import Tabs from "@/refresh-components/Tabs";
 import { Card } from "@opal/components";
-import { toast } from "@/hooks/useToast";
 
 const OLLAMA_PROVIDER_NAME = "ollama_chat";
 const DEFAULT_API_BASE = "http://127.0.0.1:11434";
@@ -68,57 +66,18 @@ function OllamaModalInternals({
   onClose,
   isOnboarding,
 }: OllamaModalInternalsProps) {
-  const isInitialMount = useRef(true);
+  const isFetchDisabled = !formikProps.values.api_base;
 
-  const doFetchModels = useCallback(
-    (apiBase: string, signal: AbortSignal) => {
-      fetchOllamaModels({
-        api_base: apiBase,
-        provider_name: existingLlmProvider?.name,
-        signal,
-      }).then((data) => {
-        if (signal.aborted) return;
-        if (data.error) {
-          toast.error(data.error);
-          setFetchedModels([]);
-          return;
-        }
-        setFetchedModels(data.models);
-      });
-    },
-    [existingLlmProvider?.name, setFetchedModels]
-  );
-
-  const debouncedFetchModels = useMemo(
-    () => debounce(doFetchModels, 500),
-    [doFetchModels]
-  );
-
-  // Skip the initial fetch for new providers — api_base starts with a default
-  // value, which would otherwise trigger a fetch before the user has done
-  // anything. Existing providers should still auto-fetch on mount.
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      if (!existingLlmProvider) return;
+  const handleFetchModels = async () => {
+    const data = await fetchOllamaModels({
+      api_base: formikProps.values.api_base,
+      provider_name: existingLlmProvider?.name,
+    });
+    if (data.error) {
+      throw new Error(data.error);
     }
-
-    if (formikProps.values.api_base) {
-      const controller = new AbortController();
-      debouncedFetchModels(formikProps.values.api_base, controller.signal);
-      return () => {
-        debouncedFetchModels.cancel();
-        controller.abort();
-      };
-    } else {
-      setFetchedModels([]);
-    }
-  }, [
-    formikProps.values.api_base,
-    debouncedFetchModels,
-    setFetchedModels,
-    existingLlmProvider,
-  ]);
+    setFetchedModels(data.models);
+  };
 
   const currentModels =
     fetchedModels.length > 0
@@ -189,6 +148,7 @@ function OllamaModalInternals({
         formikProps={formikProps}
         recommendedDefaultModel={null}
         shouldShowAutoUpdateToggle={false}
+        onRefetch={isFetchDisabled ? undefined : handleFetchModels}
       />
 
       {!isOnboarding && (

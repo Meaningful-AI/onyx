@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { Formik, FormikProps } from "formik";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
@@ -34,7 +34,6 @@ import {
   FieldWrapper,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
-import { toast } from "@/hooks/useToast";
 
 const DEFAULT_API_BASE = "http://localhost:4000";
 
@@ -67,7 +66,7 @@ function LiteLLMProxyModalInternals({
   const currentModels =
     fetchedModels.length > 0
       ? fetchedModels
-      : existingLlmProvider?.model_configurations || modelConfigurations;
+      : existingLlmProvider?.model_configurations || [];
 
   const isFetchDisabled =
     !formikProps.values.api_base || !formikProps.values.api_key;
@@ -83,18 +82,6 @@ function LiteLLMProxyModalInternals({
     }
     setFetchedModels(models);
   };
-
-  // Auto-fetch models on initial load when editing an existing provider
-  useEffect(() => {
-    if (existingLlmProvider && !isFetchDisabled) {
-      handleFetchModels().catch((err) => {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to fetch models"
-        );
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <LLMConfigurationModalWrapper

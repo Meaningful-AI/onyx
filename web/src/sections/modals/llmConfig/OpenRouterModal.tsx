@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { Formik, FormikProps } from "formik";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
@@ -33,7 +33,6 @@ import {
   FieldWrapper,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
-import { toast } from "@/hooks/useToast";
 
 const OPENROUTER_PROVIDER_NAME = "openrouter";
 const DEFAULT_API_BASE = "https://openrouter.ai/api/v1";
@@ -47,7 +46,6 @@ interface OpenRouterModalInternalsProps {
   existingLlmProvider: LLMProviderView | undefined;
   fetchedModels: ModelConfiguration[];
   setFetchedModels: (models: ModelConfiguration[]) => void;
-  modelConfigurations: ModelConfiguration[];
   isTesting: boolean;
   onClose: () => void;
   isOnboarding: boolean;
@@ -58,7 +56,6 @@ function OpenRouterModalInternals({
   existingLlmProvider,
   fetchedModels,
   setFetchedModels,
-  modelConfigurations,
   isTesting,
   onClose,
   isOnboarding,
@@ -66,7 +63,7 @@ function OpenRouterModalInternals({
   const currentModels =
     fetchedModels.length > 0
       ? fetchedModels
-      : existingLlmProvider?.model_configurations || modelConfigurations;
+      : existingLlmProvider?.model_configurations || [];
 
   const isFetchDisabled =
     !formikProps.values.api_base || !formikProps.values.api_key;
@@ -82,18 +79,6 @@ function OpenRouterModalInternals({
     }
     setFetchedModels(models);
   };
-
-  // Auto-fetch models on initial load when editing an existing provider
-  useEffect(() => {
-    if (existingLlmProvider && !isFetchDisabled) {
-      handleFetchModels().catch((err) => {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to fetch models"
-        );
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <LLMConfigurationModalWrapper
@@ -249,7 +234,6 @@ export default function OpenRouterModal({
           existingLlmProvider={existingLlmProvider}
           fetchedModels={fetchedModels}
           setFetchedModels={setFetchedModels}
-          modelConfigurations={modelConfigurations}
           isTesting={isTesting}
           onClose={onClose}
           isOnboarding={isOnboarding}

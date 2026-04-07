@@ -39,8 +39,6 @@ import { Card } from "@opal/components";
 import { Section } from "@/layouts/general-layouts";
 import { SvgAlertCircle } from "@opal/icons";
 import { Content } from "@opal/layouts";
-import { toast } from "@/hooks/useToast";
-import useOnMount from "@/hooks/useOnMount";
 
 const BEDROCK_PROVIDER_NAME = "bedrock";
 const AWS_REGION_OPTIONS = [
@@ -82,7 +80,6 @@ interface BedrockModalInternalsProps {
   existingLlmProvider: LLMProviderView | undefined;
   fetchedModels: ModelConfiguration[];
   setFetchedModels: (models: ModelConfiguration[]) => void;
-  modelConfigurations: ModelConfiguration[];
   isTesting: boolean;
   onClose: () => void;
   isOnboarding: boolean;
@@ -93,7 +90,6 @@ function BedrockModalInternals({
   existingLlmProvider,
   fetchedModels,
   setFetchedModels,
-  modelConfigurations,
   isTesting,
   onClose,
   isOnboarding,
@@ -117,7 +113,7 @@ function BedrockModalInternals({
   const currentModels =
     fetchedModels.length > 0
       ? fetchedModels
-      : existingLlmProvider?.model_configurations || modelConfigurations;
+      : existingLlmProvider?.model_configurations || [];
 
   const isAuthComplete =
     authMethod === AUTH_METHOD_IAM ||
@@ -145,17 +141,6 @@ function BedrockModalInternals({
     }
     setFetchedModels(models);
   };
-
-  // Auto-fetch models on initial load when editing an existing provider
-  useOnMount(() => {
-    if (existingLlmProvider && !isFetchDisabled) {
-      handleFetchModels().catch((err) => {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to fetch models"
-        );
-      });
-    }
-  });
 
   return (
     <LLMConfigurationModalWrapper
@@ -440,7 +425,6 @@ export default function BedrockModal({
           existingLlmProvider={existingLlmProvider}
           fetchedModels={fetchedModels}
           setFetchedModels={setFetchedModels}
-          modelConfigurations={modelConfigurations}
           isTesting={isTesting}
           onClose={onClose}
           isOnboarding={isOnboarding}

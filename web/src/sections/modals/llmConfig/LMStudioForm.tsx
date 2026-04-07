@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { Formik, FormikProps } from "formik";
 import InputTypeInField from "@/refresh-components/form/InputTypeInField";
@@ -34,8 +34,6 @@ import {
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
 import { fetchModels } from "@/app/admin/configuration/llm/utils";
-import debounce from "lodash/debounce";
-import { toast } from "@/hooks/useToast";
 
 const DEFAULT_API_BASE = "http://localhost:1234";
 
@@ -65,53 +63,24 @@ function LMStudioFormInternals({
   onClose,
   isOnboarding,
 }: LMStudioFormInternalsProps) {
-  const initialApiKey =
-    (existingLlmProvider?.custom_config?.LM_STUDIO_API_KEY as string) ?? "";
+  const isFetchDisabled = !formikProps.values.api_base;
 
-  const doFetchModels = useCallback(
-    (apiBase: string, apiKey: string | undefined, signal: AbortSignal) => {
-      fetchModels(
-        LLMProviderName.LM_STUDIO,
-        {
-          api_base: apiBase,
-          custom_config: apiKey ? { LM_STUDIO_API_KEY: apiKey } : {},
-          api_key_changed: apiKey !== initialApiKey,
-          name: existingLlmProvider?.name,
-        },
-        signal
-      ).then((data) => {
-        if (signal.aborted) return;
-        if (data.error) {
-          toast.error(data.error);
-          setFetchedModels([]);
-          return;
-        }
-        setFetchedModels(data.models);
-      });
-    },
-    [existingLlmProvider?.name, initialApiKey, setFetchedModels]
-  );
+  const handleFetchModels = async () => {
+    const initialApiKey =
+      (existingLlmProvider?.custom_config?.LM_STUDIO_API_KEY as string) ?? "";
+    const apiKey = formikProps.values.custom_config?.LM_STUDIO_API_KEY;
 
-  const debouncedFetchModels = useMemo(
-    () => debounce(doFetchModels, 500),
-    [doFetchModels]
-  );
-
-  const apiBase = formikProps.values.api_base;
-  const apiKey = formikProps.values.custom_config?.LM_STUDIO_API_KEY;
-
-  useEffect(() => {
-    if (apiBase) {
-      const controller = new AbortController();
-      debouncedFetchModels(apiBase, apiKey, controller.signal);
-      return () => {
-        debouncedFetchModels.cancel();
-        controller.abort();
-      };
-    } else {
-      setFetchedModels([]);
+    const data = await fetchModels(LLMProviderName.LM_STUDIO, {
+      api_base: formikProps.values.api_base,
+      custom_config: apiKey ? { LM_STUDIO_API_KEY: apiKey } : {},
+      api_key_changed: apiKey !== initialApiKey,
+      name: existingLlmProvider?.name,
+    });
+    if (data.error) {
+      throw new Error(data.error);
     }
-  }, [apiBase, apiKey, debouncedFetchModels, setFetchedModels]);
+    setFetchedModels(data.models);
+  };
 
   const currentModels =
     fetchedModels.length > 0
@@ -169,6 +138,7 @@ function LMStudioFormInternals({
         formikProps={formikProps}
         recommendedDefaultModel={null}
         shouldShowAutoUpdateToggle={false}
+        onRefetch={isFetchDisabled ? undefined : handleFetchModels}
       />
 
       {!isOnboarding && (

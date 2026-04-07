@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { markdown } from "@opal/utils";
 import { useSWRConfig } from "swr";
 import { Formik, FormikProps } from "formik";
@@ -35,7 +35,6 @@ import {
   FieldWrapper,
   LLMConfigurationModalWrapper,
 } from "@/sections/modals/llmConfig/shared";
-import { toast } from "@/hooks/useToast";
 
 const BIFROST_PROVIDER_NAME = LLMProviderName.BIFROST;
 const DEFAULT_API_BASE = "";
@@ -69,7 +68,7 @@ function BifrostModalInternals({
   const currentModels =
     fetchedModels.length > 0
       ? fetchedModels
-      : existingLlmProvider?.model_configurations || modelConfigurations;
+      : existingLlmProvider?.model_configurations || [];
 
   const isFetchDisabled = !formikProps.values.api_base;
 
@@ -84,19 +83,6 @@ function BifrostModalInternals({
     }
     setFetchedModels(models);
   };
-
-  // Auto-fetch models on initial load when editing an existing provider
-  useEffect(() => {
-    if (existingLlmProvider && !isFetchDisabled) {
-      handleFetchModels().catch((err) => {
-        console.error("Failed to fetch Bifrost models:", err);
-        toast.error(
-          err instanceof Error ? err.message : "Failed to fetch models"
-        );
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <LLMConfigurationModalWrapper
