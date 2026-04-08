@@ -477,6 +477,21 @@ class BifrostFinalModelResponse(BaseModel):
     supports_reasoning: bool
 
 
+# Custom provider dynamic models fetch
+class CustomProviderModelsRequest(BaseModel):
+    provider: str  # LiteLLM provider slug (e.g. "deepseek", "fireworks_ai")
+    api_base: str | None = None  # If set, fetches live models via /v1/models
+    api_key: str | None = None
+    api_version: str | None = None  # If set, used to construct the models URL
+
+
+class CustomProviderModelResponse(BaseModel):
+    name: str
+    display_name: str
+    max_input_tokens: int | None
+    supports_image_input: bool
+
+
 # OpenAI Compatible dynamic models fetch
 class OpenAICompatibleModelsRequest(BaseModel):
     api_base: str

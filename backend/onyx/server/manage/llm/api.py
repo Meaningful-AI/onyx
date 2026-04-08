@@ -47,6 +47,8 @@ from onyx.llm.factory import get_llm
 from onyx.llm.factory import get_max_input_tokens_from_llm_provider
 from onyx.llm.utils import get_bedrock_token_limit
 from onyx.llm.utils import get_llm_contextual_cost
+from onyx.llm.utils import get_max_input_tokens
+from onyx.llm.utils import litellm_thinks_model_supports_image_input
 from onyx.llm.utils import test_llm
 from onyx.llm.well_known_providers.auto_update_service import (
     fetch_llm_recommendations_from_github,
@@ -62,6 +64,8 @@ from onyx.server.manage.llm.models import BedrockFinalModelResponse
 from onyx.server.manage.llm.models import BedrockModelsRequest
 from onyx.server.manage.llm.models import BifrostFinalModelResponse
 from onyx.server.manage.llm.models import BifrostModelsRequest
+from onyx.server.manage.llm.models import CustomProviderModelResponse
+from onyx.server.manage.llm.models import CustomProviderModelsRequest
 from onyx.server.manage.llm.models import CustomProviderOption
 from onyx.server.manage.llm.models import DefaultModel
 from onyx.server.manage.llm.models import LitellmFinalModelResponse
@@ -273,6 +277,158 @@ def fetch_custom_provider_names(
             if name not in well_known
         ),
         key=lambda o: o.label.lower(),
+    )
+
+
+@admin_router.post("/custom/available-models")
+def fetch_custom_provider_models(
+    request: CustomProviderModelsRequest,
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+) -> list[CustomProviderModelResponse]:
+    """Fetch models for a custom provider.
+
+    When ``api_base`` is provided the endpoint hits the provider's
+    OpenAI-compatible ``/v1/models`` (or ``/{api_version}/models``) to
+    discover live models.  Otherwise it falls back to the static list
+    that LiteLLM ships for the given provider slug.
+
+    In both cases the response is enriched with metadata from LiteLLM
+    (display name, max input tokens, vision support) when available.
+    """
+    if request.api_base:
+        return _fetch_custom_models_from_api(
+            provider=request.provider,
+            api_base=request.api_base,
+            api_key=request.api_key,
+            api_version=request.api_version,
+        )
+
+    return _fetch_custom_models_from_litellm(request.provider)
+
+
+def _enrich_custom_model(
+    name: str,
+    provider: str,
+    *,
+    api_display_name: str | None = None,
+    api_max_input_tokens: int | None = None,
+    api_supports_image_input: bool | None = None,
+) -> CustomProviderModelResponse:
+    """Build a ``CustomProviderModelResponse`` enriched with LiteLLM metadata.
+
+    Values explicitly provided by the source API take precedence; LiteLLM
+    metadata is used as a fallback.
+    """
+    from onyx.llm.model_name_parser import parse_litellm_model_name
+
+    # LiteLLM keys are typically "provider/model"
+    litellm_key = f"{provider}/{name}" if not name.startswith(f"{provider}/") else name
+    parsed = parse_litellm_model_name(litellm_key)
+
+    # display_name: prefer API-provided name, then LiteLLM enrichment, then raw name
+    if api_display_name and api_display_name != name:
+        display_name = api_display_name
+    else:
+        display_name = parsed.display_name or name
+
+    # max_input_tokens: prefer API value, then LiteLLM lookup
+    if api_max_input_tokens is not None:
+        max_input_tokens: int | None = api_max_input_tokens
+    else:
+        try:
+            max_input_tokens = get_max_input_tokens(name, provider)
+        except Exception:
+            max_input_tokens = None
+
+    # supports_image_input: prefer API value, then LiteLLM inference
+    if api_supports_image_input is not None:
+        supports_image = api_supports_image_input
+    else:
+        supports_image = litellm_thinks_model_supports_image_input(name, provider)
+
+    return CustomProviderModelResponse(
+        name=name,
+        display_name=display_name,
+        max_input_tokens=max_input_tokens,
+        supports_image_input=supports_image,
+    )
+
+
+def _fetch_custom_models_from_api(
+    provider: str,
+    api_base: str,
+    api_key: str | None,
+    api_version: str | None,
+) -> list[CustomProviderModelResponse]:
+    """Hit an OpenAI-compatible ``/v1/models`` (or versioned variant)."""
+    cleaned = api_base.strip().rstrip("/")
+    if api_version:
+        url = f"{cleaned}/{api_version.strip().strip('/')}/models"
+    elif cleaned.endswith("/v1"):
+        url = f"{cleaned}/models"
+    else:
+        url = f"{cleaned}/v1/models"
+
+    response_json = _get_openai_compatible_models_response(
+        url=url,
+        source_name="Custom provider",
+        api_key=api_key,
+    )
+
+    models = response_json.get("data", [])
+    if not isinstance(models, list) or len(models) == 0:
+        raise OnyxError(
+            OnyxErrorCode.VALIDATION_ERROR,
+            "No models found from the provider's API.",
+        )
+
+    results: list[CustomProviderModelResponse] = []
+    for model in models:
+        try:
+            model_id = model.get("id", "")
+            if not model_id:
+                continue
+            if is_embedding_model(model_id):
+                continue
+            results.append(
+                _enrich_custom_model(
+                    model_id,
+                    provider,
+                    api_display_name=model.get("name"),
+                    api_max_input_tokens=model.get("context_length"),
+                    api_supports_image_input=infer_vision_support(model_id),
+                )
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to parse custom provider model entry",
+                extra={"error": str(e), "item": str(model)[:1000]},
+            )
+
+    if not results:
+        raise OnyxError(
+            OnyxErrorCode.VALIDATION_ERROR,
+            "No compatible models found from the provider's API.",
+        )
+
+    return sorted(results, key=lambda m: m.name.lower())
+
+
+def _fetch_custom_models_from_litellm(
+    provider: str,
+) -> list[CustomProviderModelResponse]:
+    """Fall back to litellm's static ``models_by_provider`` mapping."""
+    import litellm
+
+    model_names = litellm.models_by_provider.get(provider)
+    if model_names is None:
+        raise OnyxError(
+            OnyxErrorCode.NOT_FOUND,
+            f"Unknown provider: {provider}",
+        )
+    return sorted(
+        (_enrich_custom_model(name, provider) for name in model_names),
+        key=lambda m: m.name.lower(),
     )
 
 

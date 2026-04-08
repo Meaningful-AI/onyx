@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 import { useFormikContext } from "formik";
 import {
@@ -29,8 +29,9 @@ import InputComboBox from "@/refresh-components/inputs/InputComboBox";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
 import Text from "@/refresh-components/texts/Text";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import { Button, Card, EmptyMessageCard } from "@opal/components";
-import { SvgMinusCircle, SvgPlusCircle } from "@opal/icons";
+import { SvgMinusCircle, SvgPlusCircle, SvgRefreshCw } from "@opal/icons";
 import { markdown } from "@opal/utils";
 import { toast } from "@/hooks/useToast";
 import { refreshLlmProviderCaches } from "@/lib/llmConfig/cache";
@@ -107,6 +108,95 @@ function ModelConfigurationItem({
         onClick={onRemove}
       />
     </>
+  );
+}
+
+interface FetchedModel {
+  name: string;
+  display_name: string;
+  max_input_tokens: number | null;
+  supports_image_input: boolean;
+}
+
+function FetchModelsButton({ provider }: { provider: string }) {
+  const abortRef = useRef<AbortController | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const formikProps = useFormikContext<{
+    api_base?: string;
+    api_key?: string;
+    api_version?: string;
+    model_configurations: CustomModelConfiguration[];
+  }>();
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
+
+  async function handleFetch() {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setIsFetching(true);
+    try {
+      const response = await fetch("/api/admin/llm/custom/available-models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          api_base: formikProps.values.api_base || undefined,
+          api_key: formikProps.values.api_key || undefined,
+          api_version: formikProps.values.api_version || undefined,
+        }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        let errorMessage = "Failed to fetch models";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          // ignore JSON parsing errors
+        }
+        throw new Error(errorMessage);
+      }
+      const fetched: FetchedModel[] = await response.json();
+      const existing = formikProps.values.model_configurations;
+      const existingNames = new Set(existing.map((m) => m.name));
+      const newModels: CustomModelConfiguration[] = fetched
+        .filter((m) => !existingNames.has(m.name))
+        .map((m) => ({
+          name: m.name,
+          display_name: m.display_name !== m.name ? m.display_name : "",
+          max_input_tokens: m.max_input_tokens,
+          supports_image_input: m.supports_image_input,
+        }));
+      // Replace empty placeholder rows, then merge
+      const nonEmpty = existing.filter((m) => m.name.trim() !== "");
+      formikProps.setFieldValue("model_configurations", [
+        ...nonEmpty,
+        ...newModels,
+      ]);
+      toast.success(`Fetched ${fetched.length} models`);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      toast.error(
+        err instanceof Error ? err.message : "Failed to fetch models"
+      );
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsFetching(false);
+      }
+    }
+  }
+
+  return (
+    <Button
+      prominence="tertiary"
+      icon={isFetching ? SimpleLoader : SvgRefreshCw}
+      onClick={handleFetch}
+      disabled={isFetching || !provider}
+      type="button"
+    />
   );
 }
 
@@ -219,6 +309,24 @@ function ProviderNameSelect({ disabled }: { disabled?: boolean }) {
       createPrefix="Use"
       dropdownMaxHeight="60vh"
     />
+  );
+}
+
+function ModelsHeader() {
+  const { values } = useFormikContext<{ provider: string }>();
+  return (
+    <InputLayouts.Horizontal
+      title="Models"
+      description="List LLM models you wish to use and their configurations for this provider. See full list of models at LiteLLM."
+      nonInteractive
+      center
+    >
+      {values.provider ? (
+        <FetchModelsButton provider={values.provider} />
+      ) : (
+        <div />
+      )}
+    </InputLayouts.Horizontal>
   );
 }
 
@@ -424,13 +532,7 @@ export default function CustomModal({
       <InputLayouts.FieldSeparator />
       <Section gap={0.5}>
         <InputLayouts.FieldPadder>
-          <Content
-            title="Models"
-            description="List LLM models you wish to use and their configurations for this provider. See full list of models at LiteLLM."
-            variant="section"
-            sizePreset="main-content"
-            widthVariant="full"
-          />
+          <ModelsHeader />
         </InputLayouts.FieldPadder>
 
         <Card padding="sm">
