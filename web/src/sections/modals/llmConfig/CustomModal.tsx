@@ -99,6 +99,7 @@ function ModelConfigurationItem({
       />
       <Button
         disabled={!canRemove}
+        tooltip={!canRemove ? "At least one model is required" : undefined}
         prominence="tertiary"
         icon={SvgMinusCircle}
         onClick={onRemove}

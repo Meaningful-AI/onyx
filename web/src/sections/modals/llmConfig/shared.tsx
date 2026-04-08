@@ -398,6 +398,7 @@ function RefetchButton({ onRefetch }: RefetchButtonProps) {
         }
       }}
       disabled={isFetching}
+      tooltip={isFetching ? "Fetching models..." : "Refresh models"}
     />
   );
 }
@@ -468,6 +469,13 @@ export function ModelSelectionField({
 
   const visibleModels = models.filter((m) => m.is_visible);
 
+  const selectAllDisabled = isAutoMode || models.length === 0;
+  const selectAllTooltip = isAutoMode
+    ? "Disable Auto Update to manually select models"
+    : models.length === 0
+      ? "No models available"
+      : undefined;
+
   return (
     <Card background="light" border="none" padding="sm">
       <Section gap={0.5}>
@@ -479,7 +487,8 @@ export function ModelSelectionField({
         >
           <Section flexDirection="row" gap={0}>
             <Button
-              disabled={isAutoMode || models.length === 0}
+              disabled={selectAllDisabled}
+              tooltip={selectAllTooltip}
               prominence="tertiary"
               size="md"
               onClick={handleToggleSelectAll}
@@ -548,6 +557,13 @@ export function ModelSelectionField({
               disabled={
                 !newModelName.trim() ||
                 models.some((m) => m.name === newModelName.trim())
+              }
+              tooltip={
+                !newModelName.trim()
+                  ? "Enter a model name first"
+                  : models.some((m) => m.name === newModelName.trim())
+                    ? "This model already exists"
+                    : undefined
               }
               onClick={() => {
                 const trimmed = newModelName.trim();
@@ -683,6 +699,15 @@ function ModalWrapperInner({
             </Button>
             <Button
               disabled={!isValid || !dirty || busy}
+              tooltip={
+                busy
+                  ? "Testing provider connection..."
+                  : !dirty
+                    ? "No changes to save"
+                    : !isValid
+                      ? "Please fill in all required fields"
+                      : undefined
+              }
               type="submit"
               icon={busy ? SimpleLoader : undefined}
             >

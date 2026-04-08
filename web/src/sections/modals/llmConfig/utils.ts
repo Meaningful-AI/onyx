@@ -47,7 +47,7 @@ export function useInitialValues(
     api_key: existingLlmProvider?.api_key ?? undefined,
     api_base: existingLlmProvider?.api_base ?? undefined,
     is_public: existingLlmProvider?.is_public ?? true,
-    is_auto_mode: existingLlmProvider?.is_auto_mode ?? true,
+    is_auto_mode: existingLlmProvider?.is_auto_mode ?? false,
     groups: existingLlmProvider?.groups ?? [],
     personas: existingLlmProvider?.personas ?? [],
     model_configurations: modelConfigurations,
