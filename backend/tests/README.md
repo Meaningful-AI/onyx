@@ -45,6 +45,15 @@ npx playwright test <TEST_NAME>
 Shared fixtures live in `backend/tests/conftest.py`. Test subdirectories can define
 their own `conftest.py` for directory-scoped fixtures.
 
+## Additional Onyx-Specific Guidance
+
+- Activate the root venv first with `source .venv/bin/activate`.
+- For many product changes in this repo, prefer integration tests or external dependency unit tests
+  over isolated unit tests.
+- When writing integration tests, check `backend/tests/integration/common_utils/` and the root
+  `conftest.py` for fixtures and managers before inventing new helpers.
+- Prefer existing fixtures over constructing users or entities manually inside tests.
+
 ## Running Tests Repeatedly (`pytest-repeat`)
 
 Use `pytest-repeat` to catch flaky tests by running them multiple times:

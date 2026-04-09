@@ -53,12 +53,17 @@ func FindAlembicBinary() (string, error) {
 // otherwise it will attempt to run via docker exec on a container
 // that has alembic installed (e.g., api_server).
 func Run(args []string, schema Schema) error {
+	return RunWithEnv(args, schema, nil)
+}
+
+// RunWithEnv executes an alembic command with explicit environment overrides.
+func RunWithEnv(args []string, schema Schema, extraEnv map[string]string) error {
 	// Check if we need to run via docker exec
 	if shouldUseDockerExec() {
-		return runViaDockerExec(args, schema)
+		return runViaDockerExec(args, schema, extraEnv)
 	}
 
-	return runLocally(args, schema)
+	return runLocally(args, schema, extraEnv)
 }
 
 // shouldUseDockerExec determines if we should run alembic via docker exec.
@@ -79,7 +84,7 @@ func shouldUseDockerExec() bool {
 }
 
 // runLocally runs alembic on the local machine.
-func runLocally(args []string, schema Schema) error {
+func runLocally(args []string, schema Schema, extraEnv map[string]string) error {
 	backendDir, err := paths.BackendDir()
 	if err != nil {
 		return fmt.Errorf("failed to find backend directory: %w", err)
@@ -104,13 +109,13 @@ func runLocally(args []string, schema Schema) error {
 	cmd.Stdin = os.Stdin
 
 	// Pass through POSTGRES_* environment variables
-	cmd.Env = buildAlembicEnv()
+	cmd.Env = buildAlembicEnv(extraEnv)
 
 	return cmd.Run()
 }
 
 // runViaDockerExec runs alembic inside a Docker container that has network access.
-func runViaDockerExec(args []string, schema Schema) error {
+func runViaDockerExec(args []string, schema Schema, extraEnv map[string]string) error {
 	// Find a container with alembic installed (api_server)
 	container, err := findAlembicContainer()
 	if err != nil {
@@ -136,7 +141,11 @@ func runViaDockerExec(args []string, schema Schema) error {
 
 	// Run alembic inside the container
 	// The container should have the correct env vars and network access
-	dockerArgs := []string{"exec", "-i", container, "alembic"}
+	dockerArgs := []string{"exec", "-i"}
+	for key, value := range extraEnv {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", key, value))
+	}
+	dockerArgs = append(dockerArgs, container, "alembic")
 	dockerArgs = append(dockerArgs, alembicArgs...)
 
 	cmd := exec.Command("docker", dockerArgs...)
@@ -158,7 +167,7 @@ var alembicContainerNames = []string{
 // It inherits the current environment and ensures POSTGRES_* variables are set.
 // If POSTGRES_HOST is not explicitly set, it attempts to detect the PostgreSQL
 // container IP address automatically.
-func buildAlembicEnv() []string {
+func buildAlembicEnv(extraEnv map[string]string) []string {
 	env := os.Environ()
 
 	// Get postgres config (which reads from env with defaults)
@@ -186,6 +195,10 @@ func buildAlembicEnv() []string {
 		if key == "POSTGRES_HOST" || os.Getenv(key) == "" {
 			env = append(env, fmt.Sprintf("%s=%s", key, value))
 		}
+	}
+
+	for key, value := range extraEnv {
+		env = append(env, fmt.Sprintf("%s=%s", key, value))
 	}
 
 	return env
@@ -236,6 +249,14 @@ func Upgrade(revision string, schema Schema) error {
 		revision = "head"
 	}
 	return Run([]string{"upgrade", revision}, schema)
+}
+
+// UpgradeWithEnv runs alembic upgrade with explicit environment overrides.
+func UpgradeWithEnv(revision string, schema Schema, extraEnv map[string]string) error {
+	if revision == "" {
+		revision = "head"
+	}
+	return RunWithEnv([]string{"upgrade", revision}, schema, extraEnv)
 }
 
 // Downgrade runs alembic downgrade to the specified revision.

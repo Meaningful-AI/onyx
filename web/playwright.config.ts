@@ -3,8 +3,13 @@ import * as dotenv from "dotenv";
 
 dotenv.config({ path: ".vscode/.env" });
 
+const journeyMode = process.env.PLAYWRIGHT_JOURNEY_MODE === "1";
+
 export default defineConfig({
-  globalSetup: require.resolve("./tests/e2e/global-setup"),
+  globalSetup:
+    process.env.PLAYWRIGHT_SKIP_GLOBAL_SETUP === "1"
+      ? undefined
+      : require.resolve("./tests/e2e/global-setup"),
   timeout: 100000, // 100 seconds timeout
   expect: {
     timeout: 15000, // 15 seconds timeout for all assertions to reduce flakiness
@@ -26,12 +31,12 @@ export default defineConfig({
   reporter: [["list"]],
   // Only run Playwright tests from tests/e2e directory (ignore Jest tests in src/)
   testMatch: /.*\/tests\/e2e\/.*\.spec\.ts/,
-  outputDir: "output/playwright",
+  outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR || "output/playwright",
   use: {
     // Base URL for the application, can be overridden via BASE_URL environment variable
     baseURL: process.env.BASE_URL || "http://localhost:3000",
     // Capture trace on failure
-    trace: "retain-on-failure",
+    trace: journeyMode ? "on" : "retain-on-failure",
   },
   projects: [
     {
@@ -64,6 +69,16 @@ export default defineConfig({
         storageState: "admin_auth.json",
       },
       grep: /@lite/,
+    },
+    {
+      name: "journey",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 720 },
+        video: "on",
+      },
+      grep: /@journey/,
+      workers: 1,
     },
   ],
 });

@@ -28,11 +28,11 @@ Some commands require external tools to be installed and configured:
 - **uv** - Required for `backend` commands
   - Install from [docs.astral.sh/uv](https://docs.astral.sh/uv/)
 
-- **GitHub CLI** (`gh`) - Required for `run-ci`, `cherry-pick`, and `trace` commands
+- **GitHub CLI** (`gh`) - Required for `run-ci`, `cherry-pick`, `trace`, `pr-review`, and `pr-checks` commands
   - Install from [cli.github.com](https://cli.github.com/)
   - Authenticate with `gh auth login`
 
-- **AWS CLI** - Required for `screenshot-diff` commands (S3 baseline sync)
+- **AWS CLI** - Required for `screenshot-diff` commands and `journey publish` (S3 artifact sync)
   - Install from [aws.amazon.com/cli](https://aws.amazon.com/cli/)
   - Authenticate with `aws sso login` or `aws configure`
 
@@ -196,10 +196,18 @@ ods backend <subcommand>
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--no-ee` | `false` | Disable Enterprise Edition features (enabled by default) |
+| `--worktree` | current checkout | Run the command against a tracked agent-lab worktree |
 | `--port` | `8080` (api) / `9000` (model_server) | Port to listen on |
 
 Shell environment takes precedence over `.env` file values, so inline overrides
 work as expected (e.g. `S3_ENDPOINT_URL=foo ods backend api`).
+
+When run inside a tracked `agent-lab` worktree, `ods backend api` and
+`ods backend model_server` will automatically use that worktree's reserved
+ports unless you override them explicitly with `--port`.
+
+The same command can also be launched from the `codex/agent-lab` control
+checkout against another tracked worktree via `--worktree <branch>`.
 
 **Examples:**
 
@@ -218,6 +226,9 @@ ods backend model_server
 
 # Start the model server on a custom port
 ods backend model_server --port 9001
+
+# Run the API server for a tracked product worktree from the control checkout
+ods backend api --worktree codex/fix/auth-banner-modal
 ```
 
 ### `web` - Run Frontend Scripts
@@ -231,6 +242,14 @@ ods web <script> [args...]
 Script names are available via shell completion (for supported shells via
 `ods completion`), and are read from `web/package.json`.
 
+When run inside a tracked `agent-lab` worktree, `ods web ...` automatically
+injects the worktree's `PORT`, `BASE_URL`, `WEB_DOMAIN`, `INTERNAL_URL`, and
+`MCP_INTERNAL_URL` so the Next.js dev server boots against the right isolated
+stack.
+
+From the `codex/agent-lab` control checkout, `--worktree <branch>` applies the
+same wiring to a tracked target worktree.
+
 **Examples:**
 
 ```shell
@@ -242,6 +261,162 @@ ods web lint
 
 # Forward extra args to the script
 ods web test --watch
+
+# Run the Next.js dev server for a tracked product worktree
+ods web dev --worktree codex/fix/auth-banner-modal
+```
+
+### `worktree` - Manage Agent-Lab Worktrees
+
+Create and manage local git worktrees for agentized development. Each tracked
+worktree gets:
+
+- a reserved port bundle for web, API, model server, and MCP
+- an explicit dependency mode for local external state
+- generated `.vscode/.env.agent-lab` and `.vscode/.env.web.agent-lab` files
+- a local artifact directory for verification logs and summaries
+- a manifest stored under the shared git metadata directory
+- bootstrap support for env files, Python runtime, and frontend dependencies
+
+`ods worktree create` is the authoritative entrypoint for this workflow. Do not
+use raw `git worktree add` when you want the `agent-lab` harness, because you
+will skip the manifest, env overlays, dependency bootstrap, and lane-aware base
+selection.
+
+```shell
+ods worktree <subcommand>
+```
+
+**Subcommands:**
+
+- `create <branch>` - Create a worktree and manifest
+- `bootstrap [worktree]` - Prepare env files and dependencies for a worktree
+- `deps up|status|reset|down [worktree]` - Provision and manage namespaced external state
+- `status` - List tracked worktrees and URLs
+- `show [worktree]` - Show detailed metadata for one worktree
+- `remove <worktree>` - Remove a worktree and its local state
+
+`ods worktree create` bootstraps new worktrees by default. The current bootstrap
+behavior is:
+
+- link `.vscode/.env` and `.vscode/.env.web` from the source checkout when present
+- link the source checkout's `.venv` when present
+- clone `web/node_modules` into the worktree when present, falling back to
+  `npm ci --prefer-offline --no-audit`
+
+Current isolation boundary:
+
+- worktree-local: web/API/model-server ports, URLs, env overlays, artifact dirs
+- namespaced when `--dependency-mode namespaced` is used: PostgreSQL database,
+  Redis prefix, and MinIO file-store bucket
+- always shared: OpenSearch/Vespa and the rest of the docker-compose dependency stack
+
+`namespaced` is the default dependency mode on `agent-lab`. `shared` is still
+available for lighter-weight work that does not need isolated DB/Redis/MinIO
+state.
+
+Branch lanes:
+
+- `codex/lab/<name>` worktrees are treated as harness work and default to
+  `codex/agent-lab` as the base ref
+- `codex/fix/<name>`, `codex/feat/<name>`, and other conventional product lanes
+  default to `origin/main` as the base ref
+- branches that do not encode a lane fall back to `HEAD`; use `--from` or a
+  clearer branch name when the base matters
+
+Control-plane note:
+
+- the harness lives on `codex/agent-lab`
+- product worktrees can still be based on `origin/main`
+- run `ods backend`, `ods web`, `ods verify`, and `ods agent-check` with
+  `--worktree <branch>` from the control checkout when the target worktree does
+  not carry the harness code itself
+
+Search/vector note:
+
+- OpenSearch/Vespa stay shared-only
+- this branch intentionally does not implement namespaced or per-worktree search stacks
+- tasks that touch search/index infrastructure should assume a shared surface
+
+**Examples:**
+
+```shell
+# Create a product bugfix worktree from main
+ods worktree create codex/fix/auth-banner-modal
+
+# Create a lab-only worktree from agent-lab
+ods worktree create codex/lab/browser-validation
+
+# Reuse the shared DB/Redis/MinIO state for a lighter-weight task
+ods worktree create codex/fix/ui-polish --dependency-mode shared
+
+# Re-bootstrap an existing worktree
+ods worktree bootstrap codex/fix/auth-banner-modal
+
+# Inspect the current worktree's namespaced dependency state
+ods worktree deps status
+
+# Reset the current worktree's Postgres/Redis/MinIO namespace
+ods worktree deps reset
+
+# See tracked worktrees
+ods worktree status
+
+# Show the current worktree manifest
+ods worktree show
+
+# Remove a worktree when finished
+ods worktree remove codex/fix/auth-banner-modal
+
+# Remove a worktree and tear down its namespaced dependencies
+ods worktree remove codex/fix/auth-banner-modal --drop-deps
+```
+
+### `verify` - Run the Agent-Lab Verification Ladder
+
+Run a unified verification flow for the current checkout. `ods verify` is the
+first worktree-aware entrypoint that combines:
+
+- `agent-check`
+- optional targeted pytest execution
+- optional targeted Playwright execution
+- machine-readable verification summaries written to the worktree artifact dir
+
+```shell
+ods verify
+```
+
+Useful flags:
+
+| Flag | Description |
+|------|-------------|
+| `--base-ref <ref>` | Ref to compare against for `agent-check` |
+| `--skip-agent-check` | Skip the diff-based rules step |
+| `--worktree <id>` | Run verification against a tracked worktree from the control checkout |
+| `--pytest <path>` | Run a specific pytest path or node id (repeatable) |
+| `--playwright <path>` | Run a specific Playwright test path (repeatable) |
+| `--playwright-grep <expr>` | Pass `--grep` through to Playwright |
+| `--playwright-project <name>` | Limit Playwright to one project |
+
+Examples:
+
+```shell
+# Run just the diff-based checks
+ods verify
+
+# Validate a backend change with one focused integration target
+ods verify --pytest backend/tests/integration/tests/streaming_endpoints/test_chat_stream.py
+
+# Validate a UI change with one Playwright suite
+ods verify --playwright tests/e2e/chat/welcome_page.spec.ts --playwright-project admin
+
+# Run both backend and UI checks
+ods verify \
+  --pytest backend/tests/integration/tests/streaming_endpoints/test_chat_stream.py \
+  --playwright tests/e2e/admin/default-agent.spec.ts
+
+# Verify a tracked product worktree from the control checkout
+ods verify --worktree codex/fix/auth-banner-modal
 ```
 
 ### `db` - Database Administration
@@ -275,6 +450,56 @@ Check that specified modules are only lazily imported (used for keeping backend 
 
 ```shell
 ods check-lazy-imports
+```
+
+### `agent-check` - Check New Agent-Safety Violations
+
+Run a small set of diff-based checks aimed at keeping new changes agent-friendly
+without failing on historical debt already present in the repository.
+
+This command is part of the expected workflow on `agent-lab`. It is not necessarily a repo-wide
+mandatory gate on `main`.
+
+```shell
+ods agent-check
+```
+
+Current checks flag newly added:
+
+- `HTTPException` usage in backend product code
+- `response_model=` on backend APIs
+- Celery `.delay()` calls
+- imports from `web/src/components/` outside the legacy component tree
+
+The command also validates the `docs/agent/` knowledge base by checking that
+required files exist and that local markdown links in that surface resolve
+correctly.
+
+Useful flags:
+
+| Flag | Description |
+|------|-------------|
+| `--staged` | Check the staged diff instead of the working tree |
+| `--base-ref <ref>` | Diff against a git ref other than `HEAD` |
+| `--worktree <id>` | Check a tracked worktree from the control checkout |
+
+Examples:
+
+```shell
+# Check working tree changes
+ods agent-check
+
+# Check only staged changes
+ods agent-check --staged
+
+# Compare the branch against main
+ods agent-check --base-ref origin/main
+
+# Limit the diff to specific paths
+ods agent-check web/src backend/onyx/server/features/build
+
+# Run against a tracked product worktree from the control checkout
+ods agent-check --worktree codex/fix/auth-banner-modal --base-ref origin/main
 ```
 
 ### `run-ci` - Run CI on Fork PRs
@@ -466,6 +691,148 @@ ods trace --project admin
 
 # List traces without opening
 ods trace --list
+```
+
+### `journey` - Capture Before/After Browser Journeys
+
+Run a registered Playwright journey with video capture. The default workflow is
+to record `before` and `after` inside the same tracked worktree as the change.
+`journey compare` remains available as a recovery path when you need to compare
+two explicit revisions/worktrees after the fact.
+
+Registered journeys live in `web/tests/e2e/journeys/registry.json`.
+An optional `.github/agent-journeys.json` file can list journeys for a PR:
+
+```json
+{
+  "journeys": ["auth-landing"]
+}
+```
+
+```shell
+ods journey <subcommand>
+```
+
+**Subcommands:**
+
+- `list` - Show registered journeys
+- `run` - Run one journey against the current or target worktree
+- `compare` - Capture `before` and `after` artifacts across two revisions/worktrees when a missed baseline must be recovered
+- `publish` - Upload a compare run to S3 and upsert the PR comment
+
+**Examples:**
+
+```shell
+# List journey definitions
+ods journey list
+
+# Capture before in the tracked product worktree before editing
+ods journey run --worktree codex/fix/auth-banner-modal --journey auth-landing --label before
+
+# Capture after in that same worktree after validating the fix
+ods journey run --worktree codex/fix/auth-banner-modal --journey auth-landing --label after
+
+# Recover a missed baseline later by comparing origin/main to a tracked product worktree
+ods journey compare \
+  --journey auth-landing \
+  --after-worktree codex/fix/auth-banner-modal
+
+# Publish an existing compare run to PR #10007
+ods journey publish \
+  --run-dir .git/onyx-agent-lab/journeys/20260408-123000 \
+  --pr 10007
+```
+
+`journey run` writes a `summary.json` into the capture directory. `journey compare`
+writes a `summary.json` into its run directory and, when `--pr` is supplied,
+uploads that directory to S3 and upserts a PR comment with before/after links.
+
+### `pr-review` - Fetch and Respond to GitHub Review Threads
+
+Treat PR review comments as a local machine-readable workflow instead of relying
+on the GitHub UI alone.
+
+```shell
+ods pr-review <subcommand>
+```
+
+**Subcommands:**
+
+- `fetch` - Download review threads into local harness state
+- `triage` - Classify threads as actionable, duplicate, outdated, or resolved
+- `respond` - Reply to an inline review comment and optionally resolve its thread
+- `resolve` - Resolve a review thread without posting a reply
+
+**Examples:**
+
+```shell
+# Fetch review threads for the current branch PR
+ods pr-review fetch
+
+# Triage review threads for a specific PR
+ods pr-review triage --pr 10007
+
+# Reply to a top-level review comment and resolve the thread
+ods pr-review respond \
+  --pr 10007 \
+  --comment-id 2512997464 \
+  --thread-id PRRT_kwDO... \
+  --body "Fixed in the latest patch. Added a regression journey as well."
+```
+
+Fetched and triaged review data is written under the local harness state
+directory:
+
+```text
+$(git rev-parse --git-common-dir)/onyx-agent-lab/reviews/pr-<number>/
+```
+
+### `pr-checks` - Diagnose Failing GitHub Checks
+
+Inspect the latest checks on a PR and surface the failing ones with the next
+recommended remediation command.
+
+```shell
+ods pr-checks <subcommand>
+```
+
+**Subcommands:**
+
+- `status` - list all checks for the PR
+- `diagnose` - list only failing checks and point to the next step
+
+**Examples:**
+
+```shell
+# Show all checks on the current branch PR
+ods pr-checks status
+
+# Show only failing checks and the next remediation command
+ods pr-checks diagnose --pr 10007
+```
+
+`pr-checks diagnose` is especially useful after pushing a fix or after replying
+to review comments. For Playwright failures it points directly at `ods trace`.
+
+### `pr-open` - Open a PR With the Repo Template
+
+Create a pull request through `gh` while enforcing a conventional-commit title.
+If `--title` is omitted, `ods` uses the latest commit subject. The PR body
+defaults to `.github/pull_request_template.md`. PRs are ready-for-review by
+default; use `--draft` only when you explicitly need that state.
+
+```shell
+ods pr-open
+ods pr-open --title "fix: suppress logged-out modal on fresh auth load"
+```
+
+### `pr-merge` - Merge a PR Through `gh`
+
+Merge or auto-merge a pull request with an explicit merge method.
+
+```shell
+ods pr-merge --pr 10007 --method squash
+ods pr-merge --pr 10007 --method squash --auto --delete-branch
 ```
 
 ### Testing Changes Locally (Dry Run)

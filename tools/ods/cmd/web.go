@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/onyx-dot-app/onyx/tools/ods/internal/envutil"
 	"github.com/onyx-dot-app/onyx/tools/ods/internal/paths"
 )
 
@@ -22,28 +23,32 @@ type webPackageJSON struct {
 
 // NewWebCommand creates a command that runs npm scripts from the web directory.
 func NewWebCommand() *cobra.Command {
+	var worktree string
+
 	cmd := &cobra.Command{
 		Use:   "web <script> [args...]",
 		Short: "Run web/package.json npm scripts",
 		Long:  webHelpDescription(),
-		Args: cobra.MinimumNArgs(1),
+		Args:  cobra.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) > 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 			return webScriptNames(), cobra.ShellCompDirectiveNoFileComp
 		},
-		Run: func(cmd *cobra.Command, args []string) {
-			runWebScript(args)
-		},
 	}
-	cmd.Flags().SetInterspersed(false)
+	cmd.Flags().StringVar(&worktree, "worktree", "", "tracked agent-lab worktree to run from instead of the current checkout")
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		runWebScript(args, worktree)
+	}
 
 	return cmd
 }
 
-func runWebScript(args []string) {
-	webDir, err := webDir()
+func runWebScript(args []string, worktree string) {
+	repoRoot, manifest, hasManifest := resolveAgentLabTarget(worktree)
+
+	webDir, err := webDirForRoot(repoRoot)
 	if err != nil {
 		log.Fatalf("Failed to find web directory: %v", err)
 	}
@@ -67,6 +72,13 @@ func runWebScript(args []string) {
 	webCmd.Stdout = os.Stdout
 	webCmd.Stderr = os.Stderr
 	webCmd.Stdin = os.Stdin
+
+	if hasManifest {
+		webCmd.Env = envutil.ApplyOverrides(os.Environ(), manifest.RuntimeEnv())
+		log.Infof("agent-lab worktree %s detected: web=%s api=%s", manifest.Branch, manifest.URLs.Web, manifest.URLs.API)
+		log.Infof("lane=%s base-ref=%s", manifest.ResolvedLane(), manifest.BaseRef)
+		log.Infof("dependency mode=%s search-infra=%s", manifest.ResolvedDependencies().Mode, manifest.ResolvedDependencies().SearchInfraMode)
+	}
 
 	if err := webCmd.Run(); err != nil {
 		// For wrapped commands, preserve the child process's exit code and
@@ -101,7 +113,8 @@ func webHelpDescription() string {
 Examples:
   ods web dev
   ods web lint
-  ods web test --watch`
+  ods web test --watch
+  ods web dev --worktree codex/fix/auth-banner-modal`
 
 	scripts := webScriptNames()
 	if len(scripts) == 0 {
@@ -112,7 +125,7 @@ Examples:
 }
 
 func loadWebScripts() (map[string]string, error) {
-	webDir, err := webDir()
+	webDir, err := webDirForRoot("")
 	if err != nil {
 		return nil, err
 	}
@@ -135,10 +148,13 @@ func loadWebScripts() (map[string]string, error) {
 	return pkg.Scripts, nil
 }
 
-func webDir() (string, error) {
-	root, err := paths.GitRoot()
-	if err != nil {
-		return "", err
+func webDirForRoot(root string) (string, error) {
+	if root == "" {
+		var err error
+		root, err = paths.GitRoot()
+		if err != nil {
+			return "", err
+		}
 	}
 	return filepath.Join(root, "web"), nil
 }

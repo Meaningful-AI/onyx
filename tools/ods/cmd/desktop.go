@@ -37,8 +37,6 @@ func NewDesktopCommand() *cobra.Command {
 			runDesktopScript(args)
 		},
 	}
-	cmd.Flags().SetInterspersed(false)
-
 	return cmd
 }
 

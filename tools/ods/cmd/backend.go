@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"net"
@@ -14,14 +13,16 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/onyx-dot-app/onyx/tools/ods/internal/paths"
+	"github.com/onyx-dot-app/onyx/tools/ods/internal/agentlab"
+	"github.com/onyx-dot-app/onyx/tools/ods/internal/envutil"
 )
 
 // NewBackendCommand creates the parent "backend" command with subcommands for
 // running backend services.
 // BackendOptions holds options shared across backend subcommands.
 type BackendOptions struct {
-	NoEE bool
+	NoEE     bool
+	Worktree string
 }
 
 func NewBackendCommand() *cobra.Command {
@@ -44,6 +45,7 @@ Available subcommands:
 	}
 
 	cmd.PersistentFlags().BoolVar(&opts.NoEE, "no-ee", false, "Disable Enterprise Edition features (enabled by default)")
+	cmd.PersistentFlags().StringVar(&opts.Worktree, "worktree", "", "tracked agent-lab worktree to run from instead of the current checkout")
 
 	cmd.AddCommand(newBackendAPICommand(opts))
 	cmd.AddCommand(newBackendModelServerCommand(opts))
@@ -62,9 +64,10 @@ func newBackendAPICommand(opts *BackendOptions) *cobra.Command {
 Examples:
   ods backend api
   ods backend api --port 9090
-  ods backend api --no-ee`,
+  ods backend api --no-ee
+  ods backend api --worktree codex/fix/auth-banner-modal`,
 		Run: func(cmd *cobra.Command, args []string) {
-			runBackendService("api", "onyx.main:app", port, opts)
+			runBackendService("api", "onyx.main:app", port, cmd.Flags().Changed("port"), opts)
 		},
 	}
 
@@ -83,9 +86,10 @@ func newBackendModelServerCommand(opts *BackendOptions) *cobra.Command {
 
 Examples:
   ods backend model_server
-  ods backend model_server --port 9001`,
+  ods backend model_server --port 9001
+  ods backend model_server --worktree codex/fix/auth-banner-modal`,
 		Run: func(cmd *cobra.Command, args []string) {
-			runBackendService("model_server", "model_server.main:app", port, opts)
+			runBackendService("model_server", "model_server.main:app", port, cmd.Flags().Changed("port"), opts)
 		},
 	}
 
@@ -137,16 +141,25 @@ func resolvePort(port string) string {
 	return port
 }
 
-func runBackendService(name, module, port string, opts *BackendOptions) {
-	root, err := paths.GitRoot()
-	if err != nil {
-		log.Fatalf("Failed to find git root: %v", err)
+func runBackendService(name, module, port string, portExplicit bool, opts *BackendOptions) {
+	root, worktreeManifest, hasWorktreeManifest := resolveAgentLabTarget(opts.Worktree)
+
+	if hasWorktreeManifest && !portExplicit {
+		switch name {
+		case "api":
+			port = strconv.Itoa(worktreeManifest.Ports.API)
+		case "model_server":
+			port = strconv.Itoa(worktreeManifest.Ports.ModelServer)
+		}
 	}
 
 	port = resolvePort(port)
 
 	envFile := ensureBackendEnvFile(root)
-	fileVars := loadBackendEnvFile(envFile)
+	fileVars, err := envutil.LoadFile(envFile)
+	if err != nil {
+		log.Fatalf("Failed to load env file %s: %v", envFile, err)
+	}
 
 	eeDefaults := eeEnvDefaults(opts.NoEE)
 	fileVars = append(fileVars, eeDefaults...)
@@ -162,9 +175,17 @@ func runBackendService(name, module, port string, opts *BackendOptions) {
 	if !opts.NoEE {
 		log.Info("Enterprise Edition enabled (use --no-ee to disable)")
 	}
+	if hasWorktreeManifest {
+		log.Infof("agent-lab worktree %s detected: web=%s api=%s", worktreeManifest.Branch, worktreeManifest.URLs.Web, worktreeManifest.URLs.API)
+		log.Infof("lane=%s base-ref=%s", worktreeManifest.ResolvedLane(), worktreeManifest.BaseRef)
+		log.Infof("dependency mode=%s search-infra=%s", worktreeManifest.ResolvedDependencies().Mode, worktreeManifest.ResolvedDependencies().SearchInfraMode)
+	}
 	log.Debugf("Running in %s: uv %v", backendDir, uvicornArgs)
 
-	mergedEnv := mergeEnv(os.Environ(), fileVars)
+	mergedEnv := envutil.Merge(os.Environ(), fileVars)
+	if hasWorktreeManifest {
+		mergedEnv = envutil.ApplyOverrides(mergedEnv, worktreeManifest.RuntimeEnv())
+	}
 	log.Debugf("Applied %d env vars from %s (shell takes precedence)", len(fileVars), envFile)
 
 	svcCmd := exec.Command("uv", uvicornArgs...)
@@ -183,6 +204,18 @@ func runBackendService(name, module, port string, opts *BackendOptions) {
 		}
 		log.Fatalf("Failed to run %s: %v", name, err)
 	}
+}
+
+func currentAgentLabManifest(repoRoot string) (agentlab.Manifest, bool) {
+	commonGitDir, err := agentlab.GetCommonGitDir()
+	if err != nil {
+		return agentlab.Manifest{}, false
+	}
+	manifest, found, err := agentlab.FindByRepoRoot(commonGitDir, repoRoot)
+	if err != nil {
+		return agentlab.Manifest{}, false
+	}
+	return manifest, found
 }
 
 // eeEnvDefaults returns env entries for EE and license enforcement settings.
@@ -230,60 +263,4 @@ func ensureBackendEnvFile(root string) string {
 
 	log.Infof("Created %s from template (review and fill in <REPLACE THIS> values)", envFile)
 	return envFile
-}
-
-// mergeEnv combines shell environment with file-based defaults. Shell values
-// take precedence — file entries are only added for keys not already present.
-func mergeEnv(shellEnv, fileVars []string) []string {
-	existing := make(map[string]bool, len(shellEnv))
-	for _, entry := range shellEnv {
-		if idx := strings.Index(entry, "="); idx > 0 {
-			existing[entry[:idx]] = true
-		}
-	}
-
-	merged := make([]string, len(shellEnv))
-	copy(merged, shellEnv)
-	for _, entry := range fileVars {
-		if idx := strings.Index(entry, "="); idx > 0 {
-			key := entry[:idx]
-			if !existing[key] {
-				merged = append(merged, entry)
-			} else {
-				log.Debugf("Env var %s already set in shell, skipping .env value", key)
-			}
-		}
-	}
-	return merged
-}
-
-// loadBackendEnvFile parses a .env file into KEY=VALUE entries suitable for
-// appending to os.Environ(). Blank lines and comments are skipped.
-func loadBackendEnvFile(path string) []string {
-	f, err := os.Open(path)
-	if err != nil {
-		log.Fatalf("Failed to open env file %s: %v", path, err)
-	}
-	defer func() { _ = f.Close() }()
-
-	var envVars []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if idx := strings.Index(line, "="); idx > 0 {
-			key := strings.TrimSpace(line[:idx])
-			value := strings.TrimSpace(line[idx+1:])
-			value = strings.Trim(value, `"'`)
-			envVars = append(envVars, fmt.Sprintf("%s=%s", key, value))
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("Failed to read env file %s: %v", path, err)
-	}
-
-	return envVars
 }

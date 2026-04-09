@@ -1,0 +1,12 @@
+{
+  "journeys": [
+    {
+      "name": "auth-landing",
+      "description": "Fresh unauthenticated load lands on the auth UI without showing a logged-out modal.",
+      "test_path": "tests/e2e/journeys/auth_landing.spec.ts",
+      "project": "journey",
+      "requires_model_server": false,
+      "skip_global_setup": true
+    }
+  ]
+}

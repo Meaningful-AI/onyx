@@ -41,14 +41,20 @@ func NewRootCommand() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&opts.Debug, "debug", false, "run in debug mode")
 
 	// Add subcommands
+	cmd.AddCommand(NewAgentCheckCommand())
 	cmd.AddCommand(NewBackendCommand())
 	cmd.AddCommand(NewCheckLazyImportsCommand())
 	cmd.AddCommand(NewCherryPickCommand())
 	cmd.AddCommand(NewDBCommand())
 	cmd.AddCommand(NewOpenAPICommand())
 	cmd.AddCommand(NewComposeCommand())
+	cmd.AddCommand(NewJourneyCommand())
 	cmd.AddCommand(NewLogsCommand())
 	cmd.AddCommand(NewPullCommand())
+	cmd.AddCommand(NewPRChecksCommand())
+	cmd.AddCommand(NewPRMergeCommand())
+	cmd.AddCommand(NewPROpenCommand())
+	cmd.AddCommand(NewPRReviewCommand())
 	cmd.AddCommand(NewRunCICommand())
 	cmd.AddCommand(NewScreenshotDiffCommand())
 	cmd.AddCommand(NewDesktopCommand())
@@ -56,6 +62,8 @@ func NewRootCommand() *cobra.Command {
 	cmd.AddCommand(NewLatestStableTagCommand())
 	cmd.AddCommand(NewWhoisCommand())
 	cmd.AddCommand(NewTraceCommand())
+	cmd.AddCommand(NewVerifyCommand())
+	cmd.AddCommand(NewWorktreeCommand())
 
 	return cmd
 }
