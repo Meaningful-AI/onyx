@@ -742,8 +742,8 @@ def model_is_reasoning_model(model_name: str, model_provider: str) -> bool:
             model_provider,
             model_name,
         )
-        if model_obj and "supports_reasoning" in model_obj:
-            return model_obj["supports_reasoning"]
+        if model_obj and model_obj.get("supports_reasoning") is not None:
+            return bool(model_obj["supports_reasoning"])
 
         # Fallback: try using litellm.supports_reasoning() for newer models
         try:
