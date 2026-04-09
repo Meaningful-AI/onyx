@@ -93,9 +93,10 @@ else
         fi
 
         # Also fix bind-mounted dirs under ~dev that appear root-owned.
-        for dir in /home/"$TARGET_USER"/.claude; do
-            [ -d "$dir" ] && setfacl -Rm "u:${TARGET_USER}:rwX" "$dir" && setfacl -Rdm "u:${TARGET_USER}:rwX" "$dir"
-        done
+        dir="/home/${TARGET_USER}/.claude"
+        if [ -d "$dir" ]; then
+            setfacl -Rm "u:${TARGET_USER}:rwX" "$dir" && setfacl -Rdm "u:${TARGET_USER}:rwX" "$dir"
+        fi
         [ -f /home/"$TARGET_USER"/.claude.json ] && \
             setfacl -m "u:${TARGET_USER}:rw" /home/"$TARGET_USER"/.claude.json
     else
