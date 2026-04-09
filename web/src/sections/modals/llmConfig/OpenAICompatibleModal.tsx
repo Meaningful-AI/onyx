@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { markdown } from "@opal/utils";
 import { useSWRConfig } from "swr";
 import { useFormikContext } from "formik";
@@ -10,7 +9,7 @@ import {
   LLMProviderName,
   LLMProviderView,
 } from "@/interfaces/llm";
-import { fetchOpenAICompatibleModels } from "@/app/admin/configuration/llm/utils";
+import { fetchOpenAICompatibleModels } from "@/lib/llmConfig/svc";
 import {
   useInitialValues,
   buildValidationSchema,
@@ -59,30 +58,18 @@ function OpenAICompatibleModalInternals({
     formikProps.setFieldValue("model_configurations", models);
   };
 
-  // Auto-fetch models on initial load when editing an existing provider
-  useEffect(() => {
-    if (existingLlmProvider && !isFetchDisabled) {
-      handleFetchModels().catch((err) => {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to fetch models"
-        );
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <>
       <APIBaseField
-        subDescription="The base URL of your OpenAI-compatible server."
+        subDescription={markdown(
+          "Paste your OpenAI-compatible endpoint URL. [Learn More](https://docs.litellm.ai/docs/providers/openai_compatible)"
+        )}
         placeholder="http://localhost:8000/v1"
       />
 
       <APIKeyField
         optional
-        subDescription={markdown(
-          "Provide an API key if your server requires authentication."
-        )}
+        subDescription="Paste your API key if your model provider requires authentication."
       />
 
       {!isOnboarding && (
@@ -136,6 +123,7 @@ export default function OpenAICompatibleModal({
       llmProvider={existingLlmProvider}
       onClose={onClose}
       initialValues={initialValues}
+      description="Connect from other cloud or self-hosted models via OpenAI-compatible endpoints."
       validationSchema={validationSchema}
       onSubmit={async (values, { setSubmitting, setStatus }) => {
         await submitProvider({

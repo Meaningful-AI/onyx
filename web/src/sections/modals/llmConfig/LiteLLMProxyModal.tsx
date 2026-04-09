@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useSWRConfig } from "swr";
 import { useFormikContext } from "formik";
 import * as InputLayouts from "@/layouts/input-layouts";
@@ -9,7 +8,7 @@ import {
   LLMProviderName,
   LLMProviderView,
 } from "@/interfaces/llm";
-import { fetchLiteLLMProxyModels } from "@/app/admin/configuration/llm/utils";
+import { fetchLiteLLMProxyModels } from "@/lib/llmConfig/svc";
 import {
   useInitialValues,
   buildValidationSchema,
@@ -60,18 +59,6 @@ function LiteLLMProxyModalInternals({
     }
     formikProps.setFieldValue("model_configurations", models);
   };
-
-  // Auto-fetch models on initial load when editing an existing provider
-  useEffect(() => {
-    if (existingLlmProvider && !isFetchDisabled) {
-      handleFetchModels().catch((err) => {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to fetch models"
-        );
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <>

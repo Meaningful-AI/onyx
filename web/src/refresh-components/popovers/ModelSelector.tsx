@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef } from "react";
 import Popover from "@/refresh-components/Popover";
 import { LlmManager } from "@/lib/hooks";
-import { getProviderIcon } from "@/app/admin/configuration/llm/utils";
+import { getModelIcon } from "@/lib/llmConfig";
 import { Button, SelectButton, OpenButton } from "@opal/components";
 import { SvgPlusCircle, SvgX } from "@opal/icons";
 import { LLMOption } from "@/refresh-components/popovers/interfaces";
@@ -104,6 +104,7 @@ export default function ModelSelector({
       onRemove(existingIndex);
     } else if (!atMax) {
       onAdd(model);
+      setOpen(false);
     }
   };
 
@@ -152,7 +153,7 @@ export default function ModelSelector({
             )}
             <div className="flex items-center shrink-0">
               {selectedModels.map((model, index) => {
-                const ProviderIcon = getProviderIcon(
+                const ProviderIcon = getModelIcon(
                   model.provider,
                   model.modelName
                 );
@@ -214,15 +215,17 @@ export default function ModelSelector({
         )}
       </div>
 
-      <Popover.Content side="top" align="end" width="lg">
-        <ModelListContent
-          llmProviders={llmManager.llmProviders}
-          isLoading={llmManager.isLoadingProviders}
-          onSelect={handleSelect}
-          isSelected={isSelected}
-          isDisabled={isDisabled}
-        />
-      </Popover.Content>
+      {!(atMax && replacingIndex === null) && (
+        <Popover.Content side="top" align="end" width="lg">
+          <ModelListContent
+            llmProviders={llmManager.llmProviders}
+            isLoading={llmManager.isLoadingProviders}
+            onSelect={handleSelect}
+            isSelected={isSelected}
+            isDisabled={isDisabled}
+          />
+        </Popover.Content>
+      )}
     </Popover>
   );
 }

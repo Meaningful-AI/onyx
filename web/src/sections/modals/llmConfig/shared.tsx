@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Formik, Form, useFormikContext } from "formik";
 import type { FormikConfig } from "formik";
+import { cn } from "@/lib/utils";
+import { Interactive } from "@opal/core";
 import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 import { useAgents } from "@/hooks/useAgents";
 import { useUserGroups } from "@/lib/hooks";
@@ -23,6 +25,7 @@ import { Section } from "@/layouts/general-layouts";
 import { Content } from "@opal/layouts";
 import {
   SvgArrowExchange,
+  SvgChevronDown,
   SvgOnyxOctagon,
   SvgOrganization,
   SvgPlusCircle,
@@ -32,7 +35,7 @@ import {
   SvgUsers,
   SvgX,
 } from "@opal/icons";
-import SvgOnyxLogo from "@opal/icons/onyx-logo";
+import SvgOnyxLogo from "@opal/logos/onyx-logo";
 import { Card, EmptyMessageCard } from "@opal/components";
 import { ContentAction } from "@opal/layouts";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
@@ -41,11 +44,7 @@ import useUsers from "@/hooks/useUsers";
 import { toast } from "@/hooks/useToast";
 import { UserRole } from "@/lib/types";
 import Modal from "@/refresh-components/Modal";
-import {
-  getProviderIcon,
-  getProviderDisplayName,
-  getProviderProductName,
-} from "@/lib/llmConfig/providers";
+import { getProvider } from "@/lib/llmConfig";
 
 // ─── DisplayNameField ────────────────────────────────────────────────────────
 
@@ -407,6 +406,8 @@ function RefetchButton({ onRefetch }: RefetchButtonProps) {
 
 // ─── ModelsField ─────────────────────────────────────────────────────
 
+const FOLD_THRESHOLD = 3;
+
 export interface ModelSelectionFieldProps {
   shouldShowAutoUpdateToggle: boolean;
   onRefetch?: (signal: AbortSignal) => Promise<void> | void;
@@ -420,7 +421,11 @@ export function ModelSelectionField({
 }: ModelSelectionFieldProps) {
   const formikProps = useFormikContext<BaseLLMFormValues>();
   const [newModelName, setNewModelName] = useState("");
-  const isAutoMode = formikProps.values.is_auto_mode;
+  const [isExpanded, setIsExpanded] = useState(false);
+  // When the auto-update toggle is hidden, auto mode should have no effect —
+  // otherwise models can't be deselected and "Select All" stays disabled.
+  const isAutoMode =
+    shouldShowAutoUpdateToggle && formikProps.values.is_auto_mode;
   const models = formikProps.values.model_configurations;
 
   // Snapshot the original model visibility so we can restore it when
@@ -487,7 +492,7 @@ export function ModelSelectionField({
               size="md"
               onClick={handleToggleSelectAll}
             >
-              {allSelected ? "Unselect All" : "Select All"}
+              {allSelected ? "Deselect All" : "Select All"}
             </Button>
             {onRefetch && <RefetchButton onRefetch={onRefetch} />}
           </Section>
@@ -497,30 +502,68 @@ export function ModelSelectionField({
           <EmptyMessageCard title="No models available." padding="sm" />
         ) : (
           <Section gap={0.25}>
-            {isAutoMode
-              ? visibleModels.map((model) => (
-                  <LineItemButton
-                    key={model.name}
-                    variant="section"
-                    sizePreset="main-ui"
-                    selectVariant="select-heavy"
-                    state="selected"
-                    icon={() => <Checkbox checked />}
-                    title={model.display_name || model.name}
-                  />
-                ))
-              : models.map((model) => (
-                  <LineItemButton
-                    key={model.name}
-                    variant="section"
-                    sizePreset="main-ui"
-                    selectVariant="select-heavy"
-                    state={model.is_visible ? "selected" : "empty"}
-                    icon={() => <Checkbox checked={model.is_visible} />}
-                    title={model.name}
-                    onClick={() => setVisibility(model.name, !model.is_visible)}
-                  />
-                ))}
+            {(() => {
+              const displayModels = isAutoMode ? visibleModels : models;
+              const isFoldable = displayModels.length > FOLD_THRESHOLD;
+              const shownModels =
+                isFoldable && !isExpanded
+                  ? displayModels.slice(0, FOLD_THRESHOLD)
+                  : displayModels;
+
+              return (
+                <>
+                  {shownModels.map((model) =>
+                    isAutoMode ? (
+                      <LineItemButton
+                        key={model.name}
+                        variant="section"
+                        sizePreset="main-ui"
+                        selectVariant="select-heavy"
+                        state="selected"
+                        icon={() => <Checkbox checked />}
+                        title={model.display_name || model.name}
+                      />
+                    ) : (
+                      <LineItemButton
+                        key={model.name}
+                        variant="section"
+                        sizePreset="main-ui"
+                        selectVariant="select-heavy"
+                        state={model.is_visible ? "selected" : "empty"}
+                        icon={() => <Checkbox checked={model.is_visible} />}
+                        title={model.name}
+                        onClick={() =>
+                          setVisibility(model.name, !model.is_visible)
+                        }
+                      />
+                    )
+                  )}
+                  {isFoldable && (
+                    <Interactive.Stateless
+                      prominence="tertiary"
+                      onClick={() => setIsExpanded(!isExpanded)}
+                    >
+                      <Interactive.Container type="button" widthVariant="full">
+                        <Content
+                          sizePreset="secondary"
+                          variant="body"
+                          title={isExpanded ? "Fold Models" : "More Models"}
+                          icon={() => (
+                            <SvgChevronDown
+                              className={cn(
+                                "transition-transform",
+                                isExpanded && "-rotate-180"
+                              )}
+                              size={14}
+                            />
+                          )}
+                        />
+                      </Interactive.Container>
+                    </Interactive.Stateless>
+                  )}
+                </>
+              );
+            })()}
           </Section>
         )}
 
@@ -593,6 +636,7 @@ export interface ModalWrapperProps<
   validationSchema: FormikConfig<T>["validationSchema"];
   onSubmit: FormikConfig<T>["onSubmit"];
   children: React.ReactNode;
+  description?: string;
 }
 export function ModalWrapper<T extends BaseLLMFormValues = BaseLLMFormValues>({
   providerName,
@@ -602,6 +646,7 @@ export function ModalWrapper<T extends BaseLLMFormValues = BaseLLMFormValues>({
   validationSchema,
   onSubmit,
   children,
+  description,
 }: ModalWrapperProps<T>) {
   return (
     <Formik
@@ -616,6 +661,7 @@ export function ModalWrapper<T extends BaseLLMFormValues = BaseLLMFormValues>({
           llmProvider={llmProvider}
           onClose={onClose}
           modelConfigurations={initialValues.model_configurations}
+          description={description}
         >
           {children}
         </ModalWrapperInner>
@@ -630,6 +676,7 @@ interface ModalWrapperInnerProps {
   onClose: () => void;
   modelConfigurations?: ModelConfiguration[];
   children: React.ReactNode;
+  description?: string;
 }
 function ModalWrapperInner({
   providerName,
@@ -637,6 +684,7 @@ function ModalWrapperInner({
   onClose,
   modelConfigurations,
   children,
+  description: descriptionOverride,
 }: ModalWrapperInnerProps) {
   const { isValid, dirty, isSubmitting, status, setFieldValue, values } =
     useFormikContext<BaseLLMFormValues>();
@@ -656,14 +704,27 @@ function ModalWrapperInner({
 
   const isTesting = status?.isTesting === true;
   const busy = isTesting || isSubmitting;
-  const providerIcon = getProviderIcon(providerName);
-  const providerDisplayName = getProviderDisplayName(providerName);
-  const providerProductName = getProviderProductName(providerName);
+
+  const disabledTooltip = busy
+    ? undefined
+    : !isValid
+      ? "Please fill in all required fields."
+      : !dirty
+        ? "No changes to save."
+        : undefined;
+
+  const {
+    icon: providerIcon,
+    companyName: providerDisplayName,
+    productName: providerProductName,
+  } = getProvider(providerName);
 
   const title = llmProvider
     ? `Configure "${llmProvider.name}"`
     : `Set up ${providerProductName}`;
-  const description = `Connect to ${providerDisplayName} and set up your ${providerProductName} models.`;
+  const description =
+    descriptionOverride ??
+    `Connect to ${providerDisplayName} and set up your ${providerProductName} models.`;
 
   return (
     <Modal open onOpenChange={onClose}>
@@ -688,6 +749,7 @@ function ModalWrapperInner({
               disabled={!isValid || !dirty || busy}
               type="submit"
               icon={busy ? SimpleLoader : undefined}
+              tooltip={disabledTooltip}
             >
               {llmProvider?.name
                 ? busy
