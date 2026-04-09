@@ -169,11 +169,7 @@ def get_standard_formatter() -> ColoredFormatter:
     )
 
 
-DANSWER_DOCKER_ENV_STR = "DANSWER_RUNNING_IN_DOCKER"
-
-
-def is_running_in_container() -> bool:
-    return os.getenv(DANSWER_DOCKER_ENV_STR) == "true"
+from onyx.utils.platform import is_running_in_container  # noqa: F401
 
 
 def setup_logger(

@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from onyx import __version__ as onyx_version
+from onyx.utils.platform import is_running_in_container
 from onyx.auth.permissions import require_permission
 from onyx.auth.users import is_user_admin
 from onyx.configs.app_configs import DEFAULT_USER_FILE_MAX_UPLOAD_SIZE_MB
@@ -111,6 +112,7 @@ def fetch_settings(
             if DISABLE_VECTOR_DB
             else DEFAULT_FILE_TOKEN_COUNT_THRESHOLD_K_VECTOR_DB
         ),
+        is_containerized=is_running_in_container(),
     )
 
 
