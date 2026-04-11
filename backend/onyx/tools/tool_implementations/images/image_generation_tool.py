@@ -26,7 +26,6 @@ from onyx.server.query_and_chat.streaming_models import ImageGenerationToolHeart
 from onyx.server.query_and_chat.streaming_models import ImageGenerationToolStart
 from onyx.server.query_and_chat.streaming_models import Packet
 from onyx.tools.interface import Tool
-from onyx.tools.models import ImageGenerationToolOverrideKwargs
 from onyx.tools.models import ToolCallException
 from onyx.tools.models import ToolExecutionException
 from onyx.tools.models import ToolResponse
@@ -48,9 +47,16 @@ PROMPT_FIELD = "prompt"
 REFERENCE_IMAGE_FILE_IDS_FIELD = "reference_image_file_ids"
 
 
-class ImageGenerationTool(Tool[ImageGenerationToolOverrideKwargs | None]):
+class ImageGenerationTool(Tool[None]):
     NAME = "generate_image"
-    DESCRIPTION = "Generate an image based on a prompt. Do not use unless the user specifically requests an image."
+    DESCRIPTION = (
+        "Generate a new image from a prompt, or edit/modify existing images"
+        " from this conversation. To edit existing images — whether the user"
+        " attached them or they were produced by a previous generate_image"
+        " call — pass their file_id values in `reference_image_file_ids`."
+        " Do not use unless the user specifically requests an image or asks"
+        " to edit an image."
+    )
     DISPLAY_NAME = "Image Generation"
 
     def __init__(
@@ -142,8 +148,14 @@ class ImageGenerationTool(Tool[ImageGenerationToolOverrideKwargs | None]):
                         REFERENCE_IMAGE_FILE_IDS_FIELD: {
                             "type": "array",
                             "description": (
-                                "Optional image file IDs to use as reference context for edits/variations. "
-                                "Use the file_id values returned by previous generate_image calls."
+                                "Optional list of image file_id values to edit/modify/use as reference."
+                                " Accepts file_ids from two sources, with the same mechanics for both:"
+                                " (1) images the user attached to a user message — their file_id appears"
+                                " in the tag `[attached image — file_id: <id>]` right before the image"
+                                " in that message; (2) images returned by previous generate_image tool"
+                                " calls — their file_id appears in that call's response JSON. Leave"
+                                " unset/empty for a brand-new generation unrelated to any existing image."
+                                " The first file_id in the list is treated as the primary edit source."
                             ),
                             "items": {
                                 "type": "string",
@@ -254,41 +266,31 @@ class ImageGenerationTool(Tool[ImageGenerationToolOverrideKwargs | None]):
     def _resolve_reference_image_file_ids(
         self,
         llm_kwargs: dict[str, Any],
-        override_kwargs: ImageGenerationToolOverrideKwargs | None,
     ) -> list[str]:
         raw_reference_ids = llm_kwargs.get(REFERENCE_IMAGE_FILE_IDS_FIELD)
-        if raw_reference_ids is not None:
-            if not isinstance(raw_reference_ids, list) or not all(
-                isinstance(file_id, str) for file_id in raw_reference_ids
-            ):
-                raise ToolCallException(
-                    message=(
-                        f"Invalid {REFERENCE_IMAGE_FILE_IDS_FIELD}: expected array of strings, got {type(raw_reference_ids)}"
-                    ),
-                    llm_facing_message=(
-                        f"The '{REFERENCE_IMAGE_FILE_IDS_FIELD}' field must be an array of file_id strings."
-                    ),
-                )
-            reference_image_file_ids = [
-                file_id.strip() for file_id in raw_reference_ids if file_id.strip()
-            ]
-        elif (
-            override_kwargs
-            and override_kwargs.recent_generated_image_file_ids
-            and self.img_provider.supports_reference_images
-        ):
-            # If no explicit reference was provided, default to the most recently generated image.
-            reference_image_file_ids = [
-                override_kwargs.recent_generated_image_file_ids[-1]
-            ]
-        else:
-            reference_image_file_ids = []
+        if raw_reference_ids is None:
+            # No references requested — plain generation.
+            return []
 
-        # Deduplicate while preserving order.
+        if not isinstance(raw_reference_ids, list) or not all(
+            isinstance(file_id, str) for file_id in raw_reference_ids
+        ):
+            raise ToolCallException(
+                message=(
+                    f"Invalid {REFERENCE_IMAGE_FILE_IDS_FIELD}: expected array of strings, got {type(raw_reference_ids)}"
+                ),
+                llm_facing_message=(
+                    f"The '{REFERENCE_IMAGE_FILE_IDS_FIELD}' field must be an array of file_id strings."
+                ),
+            )
+
+        # Deduplicate while preserving order (first occurrence wins, so the
+        # LLM's intended "primary edit source" stays at index 0).
         deduped_reference_image_ids: list[str] = []
         seen_ids: set[str] = set()
-        for file_id in reference_image_file_ids:
-            if file_id in seen_ids:
+        for file_id in raw_reference_ids:
+            file_id = file_id.strip()
+            if not file_id or file_id in seen_ids:
                 continue
             seen_ids.add(file_id)
             deduped_reference_image_ids.append(file_id)
@@ -302,14 +304,14 @@ class ImageGenerationTool(Tool[ImageGenerationToolOverrideKwargs | None]):
                     f"Reference images requested but provider '{self.provider}' does not support image-editing context."
                 ),
                 llm_facing_message=(
-                    "This image provider does not support editing from previous image context. "
+                    "This image provider does not support editing from existing images. "
                     "Try text-only generation, or switch to a provider/model that supports image edits."
                 ),
             )
 
         max_reference_images = self.img_provider.max_reference_images
         if max_reference_images > 0:
-            return deduped_reference_image_ids[-max_reference_images:]
+            return deduped_reference_image_ids[:max_reference_images]
         return deduped_reference_image_ids
 
     def _load_reference_images(
@@ -358,7 +360,7 @@ class ImageGenerationTool(Tool[ImageGenerationToolOverrideKwargs | None]):
     def run(
         self,
         placement: Placement,
-        override_kwargs: ImageGenerationToolOverrideKwargs | None = None,
+        override_kwargs: None = None,  # noqa: ARG002
         **llm_kwargs: Any,
     ) -> ToolResponse:
         if PROMPT_FIELD not in llm_kwargs:
@@ -373,7 +375,6 @@ class ImageGenerationTool(Tool[ImageGenerationToolOverrideKwargs | None]):
         shape = ImageShape(llm_kwargs.get("shape", ImageShape.SQUARE.value))
         reference_image_file_ids = self._resolve_reference_image_file_ids(
             llm_kwargs=llm_kwargs,
-            override_kwargs=override_kwargs,
         )
         reference_images = self._load_reference_images(reference_image_file_ids)
 

@@ -818,7 +818,10 @@ def translate_history_to_llm_format(
                     )
                 ]
 
-                # Add image parts
+                # Add image parts. Each image is preceded by a text tag
+                # carrying its file_id so the LLM can reference the image by
+                # ID when calling tools like generate_image (which expects
+                # reference_image_file_ids to edit a specific image).
                 for img_file in msg.image_files:
                     if img_file.file_type == ChatFileType.IMAGE:
                         try:
@@ -826,6 +829,12 @@ def translate_history_to_llm_format(
                             base64_data = img_file.to_base64()
                             image_url = f"data:{image_type};base64,{base64_data}"
 
+                            content_parts.append(
+                                TextContentPart(
+                                    type="text",
+                                    text=f"[attached image — file_id: {img_file.file_id}]",
+                                )
+                            )
                             image_part = ImageContentPart(
                                 type="image_url",
                                 image_url=ImageUrlDetail(
