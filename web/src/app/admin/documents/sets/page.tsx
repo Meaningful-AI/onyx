@@ -397,7 +397,7 @@ function Main() {
     <div className="mb-8">
       <Text as="p">
         {markdown(
-          "**Document Sets** allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information Onyx searches over."
+          "**Document Sets** allow you to group logically connected documents into a single bundle. These can then be used as a filter when performing searches to control the scope of information Meaningful AI searches over."
         )}
       </Text>
       <Spacer rem={0.75} />

@@ -251,7 +251,7 @@ export default function ServiceAccountsPage() {
         <SettingsLayouts.Header
           title={route.title}
           icon={route.icon}
-          description="Use service accounts to programmatically access Onyx API."
+          description="Use service accounts to programmatically access Meaningful AI API."
           separator
         />
         <SettingsLayouts.Body>
@@ -271,7 +271,7 @@ export default function ServiceAccountsPage() {
         <SettingsLayouts.Header
           title={route.title}
           icon={route.icon}
-          description="Use service accounts to programmatically access Onyx API."
+          description="Use service accounts to programmatically access Meaningful AI API."
           separator
         />
         <SettingsLayouts.Body>
@@ -288,7 +288,7 @@ export default function ServiceAccountsPage() {
       <SettingsLayouts.Header
         title={route.title}
         icon={route.icon}
-        description="Use service accounts to programmatically access Onyx API."
+        description="Use service accounts to programmatically access Meaningful AI API."
         separator
       />
 
@@ -448,7 +448,7 @@ export default function ServiceAccountsPage() {
                   deleteTarget.api_key_name || "Unnamed"
                 }* (\`${
                   deleteTarget.api_key_display
-                }\`) will lose access to Onyx.`
+                }\`) will lose access to Meaningful AI.`
               )}
             </Text>
             <Text as="p" color="text-03">

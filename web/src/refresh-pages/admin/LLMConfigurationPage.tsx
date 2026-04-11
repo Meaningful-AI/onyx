@@ -340,7 +340,7 @@ export default function LLMConfigurationPage() {
           <Card border="solid" rounding="lg">
             <HorizontalInput
               title="Default Model"
-              description="This model will be used by Onyx by default in your chats."
+              description="This model will be used by Meaningful AI by default in your chats."
               nonInteractive
               center
             >
@@ -420,7 +420,7 @@ export default function LLMConfigurationPage() {
         >
           <Content
             title="Add Provider"
-            description="Onyx supports both popular providers and self-hosted models."
+            description="Meaningful AI supports both popular providers and self-hosted models."
             sizePreset="main-content"
             variant="section"
           />

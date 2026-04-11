@@ -47,7 +47,7 @@ export default function OpenEmbeddingPage({
       </Text>
       <Text as="p">
         {markdown(
-          "**NOTE:** not all models listed will work with Onyx, since some have unique interfaces or special requirements. If in doubt, reach out to the Onyx team."
+          "**NOTE:** not all models listed will work with Meaningful AI, since some have unique interfaces or special requirements. If in doubt, reach out to the Meaningful AI team."
         )}
       </Text>
       {!configureModel && (

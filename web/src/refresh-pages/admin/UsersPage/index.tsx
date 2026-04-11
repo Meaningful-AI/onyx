@@ -85,7 +85,7 @@ export default function UsersPage() {
           close={false}
           icon
           text="Upcoming changes to permissions"
-          description="Onyx is transitioning to group-based permissions for more granular access control. Curator and Global Curator roles will be replaced by configurable group permissions. We recommend reviewing current role assignments to ensure a smooth transition."
+          description="Meaningful AI is transitioning to group-based permissions for more granular access control. Curator and Global Curator roles will be replaced by configurable group permissions. We recommend reviewing current role assignments to ensure a smooth transition."
           actions="Learn more"
           actionIcon={SvgExternalLink}
           onAction={() =>

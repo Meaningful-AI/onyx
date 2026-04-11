@@ -76,7 +76,7 @@ export default function Logo({ folded, size, className }: LogoProps) {
                 className={"line-clamp-1 truncate"}
                 nowrap
               >
-                Powered by Onyx
+                Powered by Meaningful AI
               </Text>
             )}
           </div>
