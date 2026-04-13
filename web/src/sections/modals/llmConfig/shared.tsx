@@ -36,7 +36,6 @@ import {
   SvgUsers,
   SvgX,
 } from "@opal/icons";
-import SvgOnyxLogo from "@opal/logos/onyx-logo";
 import { Card, EmptyMessageCard } from "@opal/components";
 import { ContentAction } from "@opal/layouts";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
@@ -734,7 +733,15 @@ function ModalWrapperInner({
           <Modal.Header
             icon={providerIcon}
             moreIcon1={SvgArrowExchange}
-            moreIcon2={SvgOnyxLogo}
+            moreIcon2={({ className, style, ...rest }) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src="/meaningful-ai-icon.png"
+                alt="Meaningful AI"
+                className={cn("object-contain", className)}
+                style={style as React.CSSProperties}
+              />
+            )}
             title={title}
             description={description}
             onClose={onClose}

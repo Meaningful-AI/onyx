@@ -1,5 +1,3 @@
-import SvgOnyxLogo from "@opal/logos/onyx-logo";
-import SvgOnyxTyped from "@opal/logos/onyx-typed";
 import { cn } from "@opal/utils";
 
 interface OnyxLogoTypedProps {
@@ -7,20 +5,30 @@ interface OnyxLogoTypedProps {
   className?: string;
 }
 
-// # NOTE(@raunakab):
-// This ratio is not some random, magical number; it is available on Figma.
-const HEIGHT_TO_GAP_RATIO = 5 / 16;
-
 const SvgOnyxLogoTyped = ({ size: height, className }: OnyxLogoTypedProps) => {
-  const gap = height != null ? height * HEIGHT_TO_GAP_RATIO : undefined;
+  // The SVG logo is white, suitable for dark sidebar backgrounds.
+  // Scale width proportionally (logo aspect ratio is roughly 4:1).
+  const width = height != null ? height * 4 : undefined;
 
   return (
     <div
-      className={cn(`flex flex-row items-center`, className)}
-      style={{ gap }}
+      className={cn("flex flex-row items-center gap-2", className)}
     >
-      <SvgOnyxLogo size={height} />
-      <SvgOnyxTyped size={height} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/meaningful-ai-icon.png"
+        alt="Meaningful AI"
+        width={height}
+        height={height}
+        style={{ width: height, height: height }}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/meaningful-ai-logo.svg"
+        alt="Meaningful AI"
+        height={height}
+        style={{ height: height, width: "auto" }}
+      />
     </div>
   );
 };

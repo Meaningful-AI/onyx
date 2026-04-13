@@ -24,7 +24,6 @@ import {
   SvgSlash,
   SvgUnplug,
 } from "@opal/icons";
-import { SvgOnyxLogo } from "@opal/logos";
 import { Button, SelectCard } from "@opal/components";
 import { Hoverable } from "@opal/core";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
@@ -1169,7 +1168,8 @@ export default function WebSearchPage() {
                           height={16}
                         />
                       ) : provider.provider_type === "onyx_web_crawler" ? (
-                        <SvgOnyxLogo size={16} />
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src="/meaningful-ai-icon.png" alt="Meaningful AI" style={{ width: 16, height: 16 }} className="object-contain opacity-60" />
                       ) : (
                         <SvgGlobe size={16} />
                       )
@@ -1373,7 +1373,8 @@ export default function WebSearchPage() {
           } logo`,
           fallback:
             selectedContentProviderType === "onyx_web_crawler" ? (
-              <SvgOnyxLogo size={24} />
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/meaningful-ai-icon.png" alt="Meaningful AI" style={{ width: 24, height: 24 }} className="object-contain opacity-60" />
             ) : undefined,
           size: 24,
           containerSize: 28,

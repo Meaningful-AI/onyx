@@ -1,6 +1,5 @@
 import React, { memo } from "react";
 import { SvgArrowExchange } from "@opal/icons";
-import { SvgOnyxLogo } from "@opal/logos";
 
 type ConnectionProviderIconProps = {
   icon: React.ReactNode;
@@ -14,7 +13,14 @@ const ConnectionProviderIcon = memo(({ icon }: ConnectionProviderIconProps) => {
         <SvgArrowExchange className="w-3 h-3 stroke-text-04" />
       </div>
       <div className="w-7 h-7 flex items-center justify-center">
-        <SvgOnyxLogo size={24} className="fill-text-04" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/meaningful-ai-icon.png"
+          alt="Meaningful AI"
+          width={24}
+          height={24}
+          className="opacity-50"
+        />
       </div>
     </div>
   );
