@@ -113,13 +113,7 @@ export default function Logo({ folded, size, className }: LogoProps) {
         style={{ width: resolvedSize, height: resolvedSize }}
         className="flex-shrink-0"
       />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/meaningful-ai-logo.svg"
-        alt="Meaningful AI"
-        height={resolvedSize}
-        style={{ height: resolvedSize, width: "auto" }}
-      />
+      <span className="font-semibold text-base text-text whitespace-nowrap">Meaningful AI</span>
     </div>
   );
 }
