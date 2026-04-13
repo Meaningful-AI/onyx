@@ -261,7 +261,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
             )}
             <Content
               icon={SvgUser}
-              title={agent.owner?.email ?? "Meaningful AI"}
+              title={agent.owner?.email ?? "PHX Holdings"}
               sizePreset="main-ui"
               variant="body"
               prominence="muted"
@@ -352,7 +352,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                 {defaultModel && (
                   <Horizontal
                     title="Default Model"
-                    description="This model will be used by Meaningful AI by default in your chats."
+                    description="This model will be used by PHX Holdings by default in your chats."
                     nonInteractive
                     sizePreset="main-ui"
                   >

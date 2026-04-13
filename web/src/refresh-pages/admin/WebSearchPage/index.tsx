@@ -601,7 +601,7 @@ export default function WebSearchPage() {
       if (providerType === "onyx_web_crawler") {
         return {
           id: -1,
-          name: "Meaningful AI Web Crawler",
+          name: "PHX Holdings Web Crawler",
           provider_type: "onyx_web_crawler",
           is_active: true,
           config: null,
@@ -1169,7 +1169,7 @@ export default function WebSearchPage() {
                         />
                       ) : provider.provider_type === "onyx_web_crawler" ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src="/meaningful-ai-icon.png" alt="Meaningful AI" style={{ width: 16, height: 16 }} className="object-contain opacity-60" />
+                        <img src="/phx-icon.png" alt="PHX Holdings" style={{ width: 16, height: 16 }} className="object-contain opacity-60" />
                       ) : (
                         <SvgGlobe size={16} />
                       )
@@ -1374,7 +1374,7 @@ export default function WebSearchPage() {
           fallback:
             selectedContentProviderType === "onyx_web_crawler" ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src="/meaningful-ai-icon.png" alt="Meaningful AI" style={{ width: 24, height: 24 }} className="object-contain opacity-60" />
+              <img src="/phx-icon.png" alt="PHX Holdings" style={{ width: 24, height: 24 }} className="object-contain opacity-60" />
             ) : undefined,
           size: 24,
           containerSize: 28,

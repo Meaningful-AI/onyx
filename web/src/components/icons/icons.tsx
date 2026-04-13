@@ -588,8 +588,8 @@ export const OnyxIcon = ({
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/meaningful-ai-icon.png"
-        alt="Meaningful AI"
+        src="/phx-icon.png"
+        alt="PHX Holdings"
         width={size}
         height={size}
         style={{ width: `${size}px`, height: `${size}px` }}
@@ -606,12 +606,12 @@ export const OnyxLogoTypeIcon = ({
     <div className={`flex items-center gap-2 ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/meaningful-ai-icon.png"
-        alt="Meaningful AI"
+        src="/phx-icon.png"
+        alt="PHX Holdings"
         style={{ width: `${size}px`, height: `${size}px` }}
         className="object-contain"
       />
-      <span className="font-semibold text-lg">Meaningful AI</span>
+      <span className="font-semibold text-lg">PHX Holdings</span>
     </div>
   );
 };

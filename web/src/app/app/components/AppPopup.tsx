@@ -59,9 +59,9 @@ export function AppPopup() {
   const logoDisplayStyle = enterpriseSettings?.logo_display_style;
 
   // Header icon rules:
-  // - If neither app name nor custom logo exists -> show Meaningful AI icon
+  // - If neither app name nor custom logo exists -> show PHX Holdings icon
   // - If logo display is "name_only" -> show alert icon
-  // - Otherwise -> show uploaded custom logo (fallback to Meaningful AI icon)
+  // - Otherwise -> show uploaded custom logo (fallback to PHX Holdings icon)
   const headerIcon =
     !hasApplicationName && !hasCustomLogo
       ? (props: IconProps) => <OnyxIcon size={24} {...props} />
@@ -76,7 +76,7 @@ export function AppPopup() {
       <Modal.Content width="sm" height="lg">
         <Modal.Header
           icon={headerIcon}
-          title={popupTitle || "Welcome to Meaningful AI!"}
+          title={popupTitle || "Welcome to PHX Holdings!"}
         />
         <Modal.Body>
           <div className="overflow-y-auto text-left">

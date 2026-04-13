@@ -9,11 +9,11 @@ export const CONTENT_PROVIDER_DETAILS: Record<
   { label: string; subtitle: string; description: string; logoSrc?: string }
 > = {
   onyx_web_crawler: {
-    label: "Meaningful AI Web Crawler",
+    label: "PHX Holdings Web Crawler",
     subtitle:
       "Built-in web crawler. Works for most pages but less performant in edge cases.",
     description:
-      "Meaningful AI's built-in crawler processes URLs returned by your search engine.",
+      "PHX Holdings's built-in crawler processes URLs returned by your search engine.",
   },
   firecrawl: {
     label: "Firecrawl",

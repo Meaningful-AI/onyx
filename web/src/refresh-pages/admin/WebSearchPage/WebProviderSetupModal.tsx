@@ -71,8 +71,8 @@ export const WebProviderSetupModal = memo(
           <div className="flex items-center justify-center size-7 p-0.5 shrink-0 overflow-clip">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/meaningful-ai-icon.png"
-              alt="Meaningful AI"
+              src="/phx-icon.png"
+              alt="PHX Holdings"
               width={24}
               height={24}
               className="shrink-0 opacity-50"

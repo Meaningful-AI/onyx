@@ -9,7 +9,7 @@ export default function CloudError() {
       </Text>
 
       <Text as="p" text03>
-        Meaningful AI is currently in a maintenance window. Please check back in a couple
+        PHX Holdings is currently in a maintenance window. Please check back in a couple
         of minutes.
       </Text>
 

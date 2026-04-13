@@ -56,7 +56,7 @@ export default function NotAllowedModal({
                 permissions.
                 <br />
                 <br />
-                Luckily, you can create a new Meaningful AI account to become an admin
+                Luckily, you can create a new PHX Holdings account to become an admin
                 and craft with your own data!
               </Text>
             </div>

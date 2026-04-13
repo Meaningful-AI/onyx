@@ -53,7 +53,7 @@ interface HookFormModalProps {
 const MAX_TIMEOUT_SECONDS = 600;
 
 const SOFT_DESCRIPTION =
-  "If the endpoint returns an error, Meaningful AI logs it and continues the pipeline as normal, ignoring the hook result.";
+  "If the endpoint returns an error, PHX Holdings logs it and continues the pipeline as normal, ignoring the hook result.";
 
 function buildInitialValues(
   hook: HookResponse | undefined,
@@ -114,7 +114,7 @@ function TimeoutField({ spec }: TimeoutFieldProps) {
       name="timeout_seconds"
       title="Timeout"
       suffix="(seconds)"
-      subDescription={`Maximum time Meaningful AI will wait for the endpoint to respond before applying the fail strategy. Must be greater than 0 and at most ${MAX_TIMEOUT_SECONDS} seconds.`}
+      subDescription={`Maximum time PHX Holdings will wait for the endpoint to respond before applying the fail strategy. Must be greater than 0 and at most ${MAX_TIMEOUT_SECONDS} seconds.`}
     >
       <div className="[&_input]:!font-main-ui-mono [&_input::placeholder]:!font-main-ui-mono [&_input]:![appearance:textfield] [&_input::-webkit-outer-spin-button]:!appearance-none [&_input::-webkit-inner-spin-button]:!appearance-none w-full">
         <InputTypeInField
@@ -368,7 +368,7 @@ export default function HookFormModal({
                   <InputLayouts.Vertical
                     name="api_key"
                     title="API Key"
-                    subDescription="Meaningful AI will use this key to authenticate with your API endpoint."
+                    subDescription="PHX Holdings will use this key to authenticate with your API endpoint."
                   >
                     <PasswordInputTypeInField
                       name="api_key"

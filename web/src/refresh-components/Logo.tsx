@@ -51,7 +51,7 @@ export default function Logo({ folded, size, className }: LogoProps) {
   ) : (
     <div style={{ width: resolvedSize, height: resolvedSize }} className={cn("flex-shrink-0", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/meaningful-ai-icon.png" alt="Meaningful AI" className="w-full h-full object-contain" />
+      <img src="/phx-icon.png" alt="PHX Holdings" className="w-full h-full object-contain" />
     </div>
   );
 
@@ -100,20 +100,20 @@ export default function Logo({ folded, size, className }: LogoProps) {
   ) : folded ? (
     <div style={{ width: resolvedSize, height: resolvedSize }} className={cn("flex-shrink-0", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/meaningful-ai-icon.png" alt="Meaningful AI" className="w-full h-full object-contain" />
+      <img src="/phx-icon.png" alt="PHX Holdings" className="w-full h-full object-contain" />
     </div>
   ) : (
     <div className={cn("flex flex-row items-center gap-2", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/meaningful-ai-icon.png"
-        alt="Meaningful AI"
+        src="/phx-icon.png"
+        alt="PHX Holdings"
         width={resolvedSize}
         height={resolvedSize}
         style={{ width: resolvedSize, height: resolvedSize }}
         className="flex-shrink-0"
       />
-      <span className="font-semibold text-base text-text whitespace-nowrap">Meaningful AI</span>
+      <span className="font-semibold text-base text-text whitespace-nowrap">PHX Holdings</span>
     </div>
   );
 }

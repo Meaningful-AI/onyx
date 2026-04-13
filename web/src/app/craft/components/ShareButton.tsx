@@ -32,7 +32,7 @@ const SCOPE_OPTIONS: {
   {
     value: "public_org",
     label: "Organization",
-    description: "Anyone logged into your Meaningful AI can view this app.",
+    description: "Anyone logged into your PHX Holdings can view this app.",
   },
 ];
 
