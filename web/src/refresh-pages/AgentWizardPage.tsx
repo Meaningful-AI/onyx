@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import * as GeneralLayouts from "@/layouts/general-layouts";
 import { Button as OpalButton } from "@opal/components";
 import { Hoverable } from "@opal/core";
 import { buildImgUrl } from "@/app/app/components/files/images/utils";
@@ -35,7 +34,7 @@ import {
 import Popover, { PopoverMenu } from "@/refresh-components/Popover";
 import LineItem from "@/refresh-components/buttons/LineItem";
 import Button from "@/refresh-components/buttons/Button";
-import { SvgImage, SvgOnyxOctagon } from "@opal/icons";
+import { SvgImage } from "@opal/icons";
 import CustomAgentAvatar, {
   agentAvatarIconMap,
 } from "@/refresh-components/avatars/CustomAgentAvatar";
@@ -59,7 +58,6 @@ import AgentBuilderChat from "@/components/agents/AgentBuilderChat";
 import { ValidSources } from "@/lib/types";
 import { useVectorDbEnabled } from "@/providers/SettingsProvider";
 import { useUser } from "@/providers/UserProvider";
-import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidEnterpriseFeaturesEnabled";
 
 // ---------------------------------------------------------------------------
 // Small sub-components (duplicated from AgentEditorPage)
