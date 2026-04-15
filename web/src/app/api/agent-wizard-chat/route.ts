@@ -223,9 +223,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Build message list with system prompt
+    const safeValues = currentValues ?? {};
     const systemMessage: ChatMessage = {
       role: "system",
-      content: `${SYSTEM_PROMPT}\n\nCurrent form values:\n${JSON.stringify(currentValues, null, 2)}`,
+      content: `${SYSTEM_PROMPT}\n\nCurrent form values:\n${JSON.stringify(safeValues, null, 2)}`,
     };
     const fullMessages = [systemMessage, ...messages];
 
