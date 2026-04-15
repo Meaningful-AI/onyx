@@ -612,7 +612,7 @@ export default function AgentWizardPage() {
   }
 
   return (
-    <div className="flex h-full w-full bg-background">
+    <div className="h-full w-full overflow-hidden">
       <Formik
         initialValues={initialValues}
         validationSchema={validationSchema}
@@ -721,26 +721,20 @@ export default function AgentWizardPage() {
                 />
               </shareAgentModal.Provider>
 
-              <Form className="flex h-full w-full">
-                {/* Left panel: Chat */}
-                <div
-                  className="flex flex-col border-r border-border"
-                  style={{ width: "40%", minWidth: 320 }}
-                >
+              <Form className="flex flex-row h-full w-full overflow-hidden">
+                {/* Left panel: Chat — fixed width, scrolls internally */}
+                <div className="flex flex-col border-r border-border-01 flex-shrink-0 w-[380px] min-w-[320px] overflow-hidden">
                   <AgentBuilderChat
                     onFieldsUpdated={handleFieldsUpdated}
                   />
                 </div>
 
-                {/* Right panel: Form */}
-                <div
-                  className="flex flex-col"
-                  style={{ width: "60%" }}
-                >
+                {/* Right panel: Form — takes remaining space */}
+                <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
                   {/* Sticky header */}
-                  <div className="flex items-center justify-between px-5 py-3 border-b border-border flex-shrink-0">
-                    <div className="text-sm font-semibold text-text">
-                      Agent Configuration
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-border-01 flex-shrink-0">
+                    <div className="text-[13px] font-semibold text-text-04">
+                      Configure Agent
                     </div>
                     <div className="flex gap-2">
                       <OpalButton
@@ -774,9 +768,9 @@ export default function AgentWizardPage() {
                     </div>
                   </div>
 
-                  {/* Scrollable form body */}
-                  <div className="flex-1 overflow-y-auto p-5">
-                    <div className="max-w-[var(--container-md)] mx-auto flex flex-col gap-5">
+                  {/* Scrollable form body — no max-width constraint */}
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="px-5 py-5 flex flex-col gap-5">
                       <AgentFormBody
                         avatarEditor={<AgentIconEditor />}
                         allRecentFiles={allRecentFiles}

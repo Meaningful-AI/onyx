@@ -2,7 +2,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFormikContext } from "formik";
-import { SvgArrowUp } from "@opal/icons";
+import { SvgArrowUp, SvgOnyxOctagon } from "@opal/icons";
+import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,11 +25,21 @@ interface AgentBuilderChatProps {
 const WELCOME_MESSAGE: ChatMessage = {
   role: "assistant",
   content:
-    "Tell me about the agent you want to create. What should it do? Who is it for?",
+    "Let's build your agent together. Tell me what you'd like it to do — what's its purpose, who will use it, and what should it be great at? I'll fill in the form on the right as we talk.",
 };
 
 const FIELDS_START = "<<<FIELDS>>>";
 const FIELDS_END = "<<<END>>>";
+
+const FORM_FIELDS = [
+  "name",
+  "description",
+  "instructions",
+  "starter_messages",
+  "web_search",
+  "image_generation",
+  "code_interpreter",
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,7 +51,6 @@ function stripFieldsBlock(text: string): string {
   if (startIdx === -1) return text;
   const endIdx = text.indexOf(FIELDS_END, startIdx);
   if (endIdx === -1) {
-    // Block started but not finished — hide from the start marker onward
     return text.slice(0, startIdx).trimEnd();
   }
   return (
@@ -63,6 +73,50 @@ function extractFieldsJson(text: string): Record<string, unknown> | null {
 }
 
 // ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-[3px] py-[2px]">
+      <span className="w-[5px] h-[5px] rounded-full bg-text-03 animate-bounce [animation-delay:0ms]" />
+      <span className="w-[5px] h-[5px] rounded-full bg-text-03 animate-bounce [animation-delay:150ms]" />
+      <span className="w-[5px] h-[5px] rounded-full bg-text-03 animate-bounce [animation-delay:300ms]" />
+    </div>
+  );
+}
+
+interface MessageBubbleProps {
+  message: ChatMessage;
+  isLastMessage: boolean;
+  isStreaming: boolean;
+}
+
+function MessageBubble({ message, isLastMessage, isStreaming }: MessageBubbleProps) {
+  if (message.role === "user") {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] px-3 py-2 rounded-16 bg-background-tint-03 text-sm text-text-04 leading-relaxed whitespace-pre-wrap break-words">
+          {message.content}
+        </div>
+      </div>
+    );
+  }
+
+  // Assistant message
+  return (
+    <div className="flex items-start gap-2">
+      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-background-tint-02 border border-border-01 flex items-center justify-center mt-0.5">
+        <SvgOnyxOctagon className="w-[14px] h-[14px] stroke-text-03" />
+      </div>
+      <div className="flex-1 min-w-0 text-sm text-text-04 leading-relaxed whitespace-pre-wrap break-words pt-[2px]">
+        {message.content || (isStreaming && isLastMessage ? <TypingDots /> : null)}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -74,9 +128,11 @@ export default function AgentBuilderChat({
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [noLlm, setNoLlm] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaWrapperRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -85,10 +141,12 @@ export default function AgentBuilderChat({
 
   // Auto-resize textarea
   useEffect(() => {
+    const wrapper = textareaWrapperRef.current;
     const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
+    if (!wrapper || !ta) return;
+    wrapper.style.height = "auto";
+    const newH = Math.min(ta.scrollHeight, 120);
+    wrapper.style.height = `${newH}px`;
   }, [input]);
 
   // ------------------------------------------------------------------
@@ -107,16 +165,7 @@ export default function AgentBuilderChat({
 
     // Gather current form values to send along
     const currentValues: Record<string, unknown> = {};
-    const formFields = [
-      "name",
-      "description",
-      "instructions",
-      "starter_messages",
-      "web_search",
-      "image_generation",
-      "code_interpreter",
-    ];
-    for (const field of formFields) {
+    for (const field of FORM_FIELDS) {
       currentValues[field] = values[field];
     }
 
@@ -141,14 +190,31 @@ export default function AgentBuilderChat({
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => "Unknown error");
-        setMessages((prev) => {
-          const copy = [...prev];
-          copy[assistantIdx] = {
-            role: "assistant",
-            content: `Sorry, something went wrong: ${errorBody}. You can still fill in the form directly.`,
-          };
-          return copy;
-        });
+        const isNoProvider =
+          response.status === 500 &&
+          errorBody.toLowerCase().includes("no llm provider");
+
+        if (isNoProvider) {
+          setNoLlm(true);
+          setMessages((prev) => {
+            const copy = [...prev];
+            copy[assistantIdx] = {
+              role: "assistant",
+              content:
+                "No LLM provider is configured yet. You can still fill in the form on the right — it works independently of the chat.",
+            };
+            return copy;
+          });
+        } else {
+          setMessages((prev) => {
+            const copy = [...prev];
+            copy[assistantIdx] = {
+              role: "assistant",
+              content: `Something went wrong (${response.status}). You can still fill in the form directly.`,
+            };
+            return copy;
+          });
+        }
         setIsStreaming(false);
         return;
       }
@@ -166,9 +232,7 @@ export default function AgentBuilderChat({
 
         buffer += decoder.decode(value, { stream: true });
 
-        // Process complete SSE lines
         const lines = buffer.split("\n");
-        // Keep the last potentially incomplete line in the buffer
         buffer = lines.pop() ?? "";
 
         for (const line of lines) {
@@ -183,7 +247,6 @@ export default function AgentBuilderChat({
             const parsed = JSON.parse(jsonStr);
 
             if (provider === "anthropic") {
-              // Anthropic format: content_block_delta
               if (
                 parsed.type === "content_block_delta" &&
                 parsed.delta?.text
@@ -191,16 +254,11 @@ export default function AgentBuilderChat({
                 delta = parsed.delta.text;
               }
             } else if (provider === "openai") {
-              // OpenAI format: choices[0].delta.content
               if (parsed.choices?.[0]?.delta?.content) {
                 delta = parsed.choices[0].delta.content;
               }
             } else {
-              // Flexible: try both formats
-              if (
-                parsed.type === "content_block_delta" &&
-                parsed.delta?.text
-              ) {
+              if (parsed.type === "content_block_delta" && parsed.delta?.text) {
                 delta = parsed.delta.text;
               } else if (parsed.choices?.[0]?.delta?.content) {
                 delta = parsed.choices[0].delta.content;
@@ -238,7 +296,7 @@ export default function AgentBuilderChat({
       if (fieldsData) {
         const updatedFieldNames: string[] = [];
         for (const [key, val] of Object.entries(fieldsData)) {
-          if (formFields.includes(key)) {
+          if (FORM_FIELDS.includes(key)) {
             setFieldValue(key, val);
             updatedFieldNames.push(key);
           }
@@ -253,7 +311,7 @@ export default function AgentBuilderChat({
         copy[assistantIdx] = {
           role: "assistant",
           content:
-            "Sorry, I couldn't connect. You can still fill in the form directly.",
+            "Couldn't connect to the AI. You can still fill in the form on the right directly.",
         };
         return copy;
       });
@@ -268,7 +326,7 @@ export default function AgentBuilderChat({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey && !(e.nativeEvent as any).isComposing) {
         e.preventDefault();
         handleSend();
       }
@@ -281,82 +339,76 @@ export default function AgentBuilderChat({
   // ------------------------------------------------------------------
 
   return (
-    <div className="flex flex-col h-full bg-background border-l border-border">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border">
-        <h2 className="text-base font-semibold text-text">Agent Builder</h2>
-        <p className="text-xs text-text-muted">
-          Describe your agent and I&apos;ll help configure it
+      <div className="px-4 pt-4 pb-3 flex-shrink-0 border-b border-border-01">
+        <p className="text-[13px] font-semibold text-text-04 leading-none">
+          Agent Builder
+        </p>
+        <p className="text-[12px] text-text-03 mt-1 leading-tight">
+          Describe your agent and I&apos;ll configure it for you
         </p>
       </div>
 
+      {/* No LLM banner */}
+      {noLlm && (
+        <div className="mx-3 mt-3 px-3 py-2 rounded-12 bg-status-warning-00 border border-status-warning-02 flex-shrink-0">
+          <p className="text-[12px] text-text-03 leading-snug">
+            No LLM provider configured. The form on the right works independently — fill it in directly.
+          </p>
+        </div>
+      )}
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 min-h-0">
         {messages.map((msg, idx) => (
-          <div
+          <MessageBubble
             key={idx}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {msg.role === "assistant" && (
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-accent flex items-center justify-center mr-2 mt-0.5">
-                <span className="text-[10px] font-bold text-white">AI</span>
-              </div>
-            )}
-            <div
-              className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                msg.role === "user"
-                  ? "bg-background-emphasis text-text"
-                  : "bg-background-subtle text-text"
-              }`}
-            >
-              {msg.content ||
-                (isStreaming && idx === messages.length - 1 ? (
-                  <TypingIndicator />
-                ) : null)}
-            </div>
-          </div>
+            message={msg}
+            isLastMessage={idx === messages.length - 1}
+            isStreaming={isStreaming}
+          />
         ))}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="px-4 py-3 border-t border-border">
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Describe your agent..."
-            disabled={isStreaming}
-            rows={1}
-            className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
-            style={{ maxHeight: 120 }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={isStreaming || !input.trim()}
-            className="flex-shrink-0 w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
-            aria-label="Send message"
-          >
-            <SvgArrowUp className="w-4 h-4" />
-          </button>
+      {/* Input area — styled to match Onyx's AppInputBar */}
+      <div className="px-3 pb-3 flex-shrink-0">
+        <div className="flex flex-col shadow-01 bg-background-neutral-00 rounded-16">
+          {/* Textarea row */}
+          <div className="px-3 py-2 flex items-center">
+            <div ref={textareaWrapperRef} className="flex-1 min-h-[1.75rem]" style={{ height: "1.75rem" }}>
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Describe your agent…"
+                disabled={isStreaming || noLlm}
+                rows={1}
+                className="w-full h-full outline-none bg-transparent resize-none placeholder:text-text-03 text-[13px] text-text-04 whitespace-pre-wrap break-words overflow-y-auto leading-relaxed disabled:opacity-50"
+                style={{ scrollbarWidth: "thin" }}
+              />
+            </div>
+          </div>
+
+          {/* Bottom bar with send button */}
+          <div className="flex justify-end items-center px-2 pb-2 pt-0">
+            <button
+              onClick={handleSend}
+              disabled={isStreaming || !input.trim() || noLlm}
+              className="flex items-center justify-center w-[1.75rem] h-[1.75rem] rounded-full bg-text-04 text-background-neutral-00 disabled:opacity-30 hover:opacity-80 transition-opacity flex-shrink-0"
+              aria-label="Send message"
+            >
+              {isStreaming ? (
+                <SimpleLoader className="w-3 h-3 stroke-background-neutral-00" />
+              ) : (
+                <SvgArrowUp className="w-3 h-3" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// TypingIndicator
-// ---------------------------------------------------------------------------
-
-function TypingIndicator() {
-  return (
-    <div className="flex items-center gap-1 py-1">
-      <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce [animation-delay:0ms]" />
-      <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce [animation-delay:150ms]" />
-      <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce [animation-delay:300ms]" />
     </div>
   );
 }

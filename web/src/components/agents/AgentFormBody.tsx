@@ -304,11 +304,11 @@ export default function AgentFormBody({
     values.shared_user_ids?.length > 0 ||
     values.shared_group_ids?.length > 0;
 
-  /** Wrap a section in a highlight ring when the field name is in the set */
+  /** Wrap a section in a subtle highlight when the field name is in the set */
   function highlight(fieldName: string, children: React.ReactNode) {
     if (!highlightedFields?.has(fieldName)) return children;
     return (
-      <div className="ring-2 ring-accent rounded-lg transition-all duration-500">
+      <div className="rounded-12 bg-status-info-00 border border-status-info-02 transition-all duration-500 -mx-2 px-2">
         {children}
       </div>
     );
