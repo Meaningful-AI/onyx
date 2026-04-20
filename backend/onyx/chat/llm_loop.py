@@ -42,6 +42,7 @@ from onyx.llm.interfaces import LLMUserIdentity
 from onyx.llm.interfaces import ToolChoiceOptions
 from onyx.llm.utils import is_true_openai_model
 from onyx.prompts.chat_prompts import IMAGE_GEN_REMINDER
+from onyx.server.settings.store import load_settings
 from onyx.prompts.chat_prompts import OPEN_URL_REMINDER
 from onyx.server.query_and_chat.placement import Placement
 from onyx.server.query_and_chat.streaming_models import OverallStop
@@ -238,14 +239,7 @@ def _try_fallback_tool_extraction(
     return llm_step_result, True
 
 
-# Hardcoded oppinionated value, might breaks down to something like:
-# Cycle 1: Calls web_search for something
-# Cycle 2: Calls open_url for some results
-# Cycle 3: Calls web_search for some other aspect of the question
-# Cycle 4: Calls open_url for some results
-# Cycle 5: Maybe call open_url for some additional results or because last set failed
-# Cycle 6: No more tools available, forced to answer
-MAX_LLM_CYCLES = 6
+DEFAULT_MAX_LLM_CYCLES = 15
 
 
 def _build_context_file_citation_mapping(
@@ -717,10 +711,13 @@ def run_llm_loop(
         system_prompt = None
         custom_agent_prompt_msg = None
 
+        settings = load_settings()
+        max_llm_cycles = settings.max_tool_calls or DEFAULT_MAX_LLM_CYCLES
+
         reasoning_cycles = 0
-        for llm_cycle_count in range(MAX_LLM_CYCLES):
+        for llm_cycle_count in range(max_llm_cycles):
             # Handling tool calls based on cycle count and past cycle conditions
-            out_of_cycles = llm_cycle_count == MAX_LLM_CYCLES - 1
+            out_of_cycles = llm_cycle_count == max_llm_cycles - 1
             if forced_tool_id:
                 # Needs to be just the single one because the "required" currently doesn't have a specified tool, just a binary
                 final_tools = [tool for tool in tools if tool.id == forced_tool_id]

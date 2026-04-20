@@ -98,6 +98,10 @@ class Settings(BaseModel):
     # Default Assistant settings
     disable_default_assistant: bool | None = False
 
+    # Agent tool call limit — max LLM cycles per chat turn.
+    # None = use the hardcoded default (15).
+    max_tool_calls: int | None = None
+
     # Seat usage - populated by license enforcement when seat limit is exceeded
     seat_count: int | None = None
     used_seats: int | None = None
