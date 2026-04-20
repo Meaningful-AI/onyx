@@ -1531,7 +1531,7 @@ export default function AgentEditorPage({
                               <InputLayouts.Horizontal
                                 name="llm_model"
                                 title="Default Model"
-                                description="This model will be used by Meaningful AI by default in your chats."
+                                description="This model will be used by PHX Holdings by default in your chats."
                               >
                                 <LLMSelector
                                   name="llm_model"

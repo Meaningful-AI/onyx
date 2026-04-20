@@ -7,7 +7,7 @@ export default function DynamicMetadata() {
   const { enterpriseSettings } = useSettingsContext();
 
   useEffect(() => {
-    const title = enterpriseSettings?.application_name || "Meaningful AI";
+    const title = enterpriseSettings?.application_name || "PHX Holdings";
     if (document.title !== title) {
       document.title = title;
     }
@@ -22,7 +22,7 @@ export default function DynamicMetadata() {
 
   const favicon = enterpriseSettings?.use_custom_logo
     ? `/api/enterprise-settings/logo?v=${cacheBuster}`
-    : "/meaningful-ai-favicon.ico";
+    : "/phx-favicon.ico";
 
   return <link rel="icon" href={favicon} />;
 }

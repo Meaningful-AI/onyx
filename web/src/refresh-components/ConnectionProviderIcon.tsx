@@ -15,8 +15,8 @@ const ConnectionProviderIcon = memo(({ icon }: ConnectionProviderIconProps) => {
       <div className="w-7 h-7 flex items-center justify-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/meaningful-ai-icon.png"
-          alt="Meaningful AI"
+          src="/phx-icon.png"
+          alt="PHX Holdings"
           width={24}
           height={24}
           className="opacity-50"

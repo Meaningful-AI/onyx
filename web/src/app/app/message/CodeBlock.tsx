@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import React, { useState, ReactNode, useCallback, useMemo, memo } from "react";
 import { SvgCheck, SvgCode, SvgCopy } from "@opal/icons";
+import copy from "copy-to-clipboard";
 
 interface CodeBlockProps {
   className?: string;
@@ -32,12 +33,21 @@ export const CodeBlock = memo(function CodeBlock({
       .join(" ");
   }, [className]);
 
-  const handleCopy = useCallback(() => {
+  const handleCopy = useCallback(async () => {
     if (!codeText) return;
-    navigator.clipboard.writeText(codeText).then(() => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(codeText);
+      } else {
+        copy(codeText);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch {
+      copy(codeText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   }, [codeText]);
 
   const CopyButton = () => (

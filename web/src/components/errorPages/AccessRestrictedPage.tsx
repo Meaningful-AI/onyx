@@ -63,9 +63,9 @@ export default function AccessRestricted() {
     ? getSeatLimitMessage()
     : showRenewalMessage
       ? NEXT_PUBLIC_CLOUD_ENABLED
-        ? "Your access to Meaningful AI has been temporarily suspended due to a lapse in your subscription."
-        : "Your access to Meaningful AI has been temporarily suspended due to a lapse in your license."
-      : "An Enterprise license is required to use Meaningful AI. Your data is protected and will be available once a license is activated.";
+        ? "Your access to PHX Holdings has been temporarily suspended due to a lapse in your subscription."
+        : "Your access to PHX Holdings has been temporarily suspended due to a lapse in your license."
+      : "An Enterprise license is required to use PHX Holdings. Your data is protected and will be available once a license is activated.";
 
   const handleResubscribe = async () => {
     setIsLoading(true);
@@ -125,7 +125,7 @@ export default function AccessRestricted() {
       ) : NEXT_PUBLIC_CLOUD_ENABLED ? (
         <>
           <Text text03>
-            To reinstate your access and continue benefiting from Meaningful AI&apos;s
+            To reinstate your access and continue benefiting from PHX Holdings&apos;s
             powerful features, please update your payment information.
           </Text>
 
@@ -156,7 +156,7 @@ export default function AccessRestricted() {
         <>
           <Text text03>
             {hadPreviousLicense
-              ? "To reinstate your access and continue using Meaningful AI, please contact your system administrator to renew your license."
+              ? "To reinstate your access and continue using PHX Holdings, please contact your system administrator to renew your license."
               : "To get started, please contact your system administrator to obtain an Enterprise license."}
           </Text>
 

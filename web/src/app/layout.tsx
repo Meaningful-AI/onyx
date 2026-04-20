@@ -50,8 +50,8 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Meaningful AI",
-  description: "Question answering for your documents",
+  title: "PHX Holdings",
+  description: "AI-powered knowledge management for PHX Holdings",
 };
 
 // force-dynamic prevents Next.js from statically prerendering pages at build

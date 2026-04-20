@@ -419,7 +419,7 @@ export default function BuildOnboardingModal({
             />
           )}
 
-          {/* Page 1 - What is Meaningful AI Craft? */}
+          {/* Page 1 - What is PHX Holdings Craft? */}
           {currentStep === "page1" && (
             <OnboardingInfoPages
               step="page1"

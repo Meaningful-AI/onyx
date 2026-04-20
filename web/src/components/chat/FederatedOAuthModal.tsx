@@ -118,7 +118,7 @@ export default function FederatedOAuthModal() {
   }
 
   const applicationName =
-    settings?.enterpriseSettings?.application_name || "Meaningful AI";
+    settings?.enterpriseSettings?.application_name || "PHX Holdings";
 
   return (
     <Modal open>

@@ -372,7 +372,7 @@ export default function BuildConfigPage() {
       <SettingsLayouts.Root>
         <SettingsLayouts.Header
           icon={SvgPlug}
-          title="Configure Meaningful AI Craft"
+          title="Configure PHX Holdings Craft"
           description="Select data sources and your default LLM"
           rightChildren={
             <div className="flex items-center gap-2">
