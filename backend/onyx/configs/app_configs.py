@@ -264,6 +264,22 @@ DOCUMENT_INDEX_NAME = "danswer_index"
 # OpenSearch Configs
 OPENSEARCH_HOST = os.environ.get("OPENSEARCH_HOST") or "localhost"
 OPENSEARCH_REST_API_PORT = int(os.environ.get("OPENSEARCH_REST_API_PORT") or 9200)
+# Local Docker/OpenSearch uses HTTP on 9200; managed clusters typically use HTTPS.
+_opensearch_use_ssl_env = os.environ.get("OPENSEARCH_USE_SSL", "").strip()
+if _opensearch_use_ssl_env:
+    OPENSEARCH_USE_SSL = _opensearch_use_ssl_env.lower() == "true"
+else:
+    _opensearch_host_lower = OPENSEARCH_HOST.strip().lower()
+    if _opensearch_host_lower in (
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "opensearch",
+        "host.docker.internal",
+    ):
+        OPENSEARCH_USE_SSL = False
+    else:
+        OPENSEARCH_USE_SSL = True
 # TODO(andrei): 60 seconds is too much, we're just setting a high default
 # timeout for now to examine why queries are slow.
 # NOTE: This timeout applies to all requests the client makes, including bulk

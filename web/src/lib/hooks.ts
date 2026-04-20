@@ -654,9 +654,14 @@ export function useLlmManager(
     defaultText: allUserDefaultText,
     isLoading: isLoadingAllProviders,
   } = useLLMProviders();
-  // Fetch persona-specific providers to enforce RBAC restrictions per assistant
-  // Only fetch if we have an agent selected
-  const personaId = liveAgent?.id !== undefined ? liveAgent.id : undefined;
+  // Fetch persona-specific providers to enforce RBAC restrictions per assistant.
+  // Only real persisted personas (positive ids); placeholders like -1 must use the global list.
+  const personaId =
+    liveAgent != null &&
+    typeof liveAgent.id === "number" &&
+    liveAgent.id > 0
+      ? liveAgent.id
+      : undefined;
   const {
     llmProviders: personaProviders,
     defaultText: personaDefaultText,

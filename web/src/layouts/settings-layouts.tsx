@@ -47,7 +47,7 @@ const widthClasses = {
   "sm-md": "w-[min(var(--container-sm-md),100%)]",
   md: "w-[min(var(--container-md),100%)]",
   lg: "w-[min(var(--container-lg),100%)]",
-  full: "w-[var(--container-full)]",
+  full: "w-full min-w-0",
 };
 
 /**
@@ -81,18 +81,45 @@ const widthClasses = {
 interface SettingsRootProps
   extends WithoutStyles<React.HtmlHTMLAttributes<HTMLDivElement>> {
   width?: keyof typeof widthClasses;
+  /** When false, the root does not scroll; children should own vertical overflow (e.g. split panes). */
+  scrollable?: boolean;
 }
-function SettingsRoot({ width = "md", ...props }: SettingsRootProps) {
+
+interface SettingsBodyProps
+  extends WithoutStyles<React.HtmlHTMLAttributes<HTMLDivElement>> {
+  /** Tighter padding and gaps (e.g. agent wizard split-pane form column). */
+  compact?: boolean;
+}
+function SettingsRoot({
+  width = "md",
+  scrollable = true,
+  ...props
+}: SettingsRootProps) {
   return (
     <div
       id="page-wrapper-scroll-container"
-      className="w-full h-full flex flex-col items-center overflow-y-auto"
+      className={cn(
+        "flex min-h-0 w-full flex-col items-stretch",
+        scrollable ? "h-full overflow-y-auto" : "h-full overflow-hidden"
+      )}
     >
       {/* WARNING: The id="page-wrapper-scroll-container" above is used by SettingsHeader
           to detect scroll position and show/hide the scroll shadow.
           DO NOT REMOVE this ID without updating SettingsHeader accordingly. */}
-      <div className={cn("h-full", widthClasses[width])}>
-        <div {...props} />
+      <div
+        className={cn(
+          "flex min-h-0 flex-col",
+          scrollable ? "h-full" : "h-full min-h-0 flex-1",
+          widthClasses[width]
+        )}
+      >
+        <div
+          className={cn(
+            "flex min-h-0 flex-col",
+            scrollable ? "h-full" : "h-full min-h-0 flex-1"
+          )}
+          {...props}
+        />
       </div>
     </div>
   );
@@ -176,6 +203,8 @@ export interface SettingsHeaderProps {
   backButton?: boolean;
   onBack?: () => void;
   separator?: boolean;
+  /** Tighter top spacing and title/back gap (e.g. split-pane wizard layouts). */
+  dense?: boolean;
 }
 function SettingsHeader({
   icon: Icon,
@@ -186,6 +215,7 @@ function SettingsHeader({
   backButton,
   onBack,
   separator,
+  dense,
 }: SettingsHeaderProps) {
   const [showShadow, setShowShadow] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -215,13 +245,64 @@ function SettingsHeader({
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, [isSticky]);
 
+  const compactToolbar =
+    dense && backButton && rightChildren && children == null;
+
+  const scrollShadow = isSticky ? (
+    <div
+      className={cn(
+        "pointer-events-none absolute left-0 right-0 h-[0.5rem] rounded-b-08 opacity-0 transition-opacity duration-300",
+        showShadow && "opacity-100"
+      )}
+      style={{
+        background:
+          "linear-gradient(to bottom, var(--mask-02), transparent)",
+      }}
+    />
+  ) : null;
+
+  if (compactToolbar) {
+    return (
+      <div
+        ref={headerRef}
+        className={cn(
+          "w-full bg-background-tint-01",
+          isSticky && "sticky top-0 z-settings-header"
+        )}
+      >
+        <div className="flex min-h-0 w-full flex-wrap items-center gap-x-3 gap-y-2 p-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div className="shrink-0">
+              <BackButton behaviorOverride={onBack} />
+            </div>
+            <div
+              aria-label="admin-page-title"
+              className="min-w-0 flex-1 overflow-hidden"
+            >
+              <Content
+                icon={Icon}
+                title={title}
+                description={description}
+                sizePreset="headline"
+                variant="section"
+              />
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">{rightChildren}</div>
+        </div>
+        {separator ? <Separator noPadding /> : null}
+        {scrollShadow}
+      </div>
+    );
+  }
+
   return (
     <div
       ref={headerRef}
       className={cn(
         "w-full bg-background-tint-01",
         isSticky && "sticky top-0 z-settings-header",
-        backButton && "md:pt-4"
+        backButton && !dense && "md:pt-4"
       )}
     >
       {backButton && (
@@ -230,7 +311,7 @@ function SettingsHeader({
         </div>
       )}
 
-      <Spacer vertical rem={2.5} />
+      <Spacer vertical rem={dense ? 1 : 2.5} />
 
       <div className="flex flex-col gap-6 px-4">
         <div className="flex w-full justify-between">
@@ -240,7 +321,7 @@ function SettingsHeader({
               title={title}
               description={description}
               sizePreset="headline"
-              variant="heading"
+              variant="section"
             />
           </div>
           {rightChildren}
@@ -251,25 +332,14 @@ function SettingsHeader({
 
       {separator ? (
         <>
-          <Spacer vertical rem={1.5} />
-          <Separator noPadding className="px-4" />
+          <Spacer vertical rem={dense ? 1 : 1.5} />
+          <Separator noPadding />
         </>
       ) : (
-        <Spacer vertical rem={0.5} />
+        <Spacer vertical rem={dense ? 0.25 : 0.5} />
       )}
 
-      {isSticky && (
-        <div
-          className={cn(
-            "absolute left-0 right-0 h-[0.5rem] pointer-events-none transition-opacity duration-300 rounded-b-08 opacity-0",
-            showShadow && "opacity-100"
-          )}
-          style={{
-            background:
-              "linear-gradient(to bottom, var(--mask-02), transparent)",
-          }}
-        />
-      )}
+      {scrollShadow}
     </div>
   );
 }
@@ -301,12 +371,15 @@ function SettingsHeader({
  * </SettingsLayouts.Body>
  * ```
  */
-function SettingsBody(
-  props: WithoutStyles<HtmlHTMLAttributes<HTMLDivElement>>
-) {
+function SettingsBody({ compact, ...props }: SettingsBodyProps) {
   return (
     <div
-      className="pt-6 pb-[4.5rem] px-4 flex flex-col gap-8 w-full"
+      className={cn(
+        "flex w-full flex-col",
+        compact
+          ? "min-h-0 gap-6 px-4 pb-8 pt-4"
+          : "gap-8 px-4 pb-[4.5rem] pt-6"
+      )}
       {...props}
     />
   );

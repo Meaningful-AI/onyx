@@ -5,6 +5,7 @@ from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import Query
 from fastapi import UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -41,6 +42,9 @@ from onyx.db.persona import update_personas_display_priority
 from onyx.file_store.file_store import get_default_file_store
 from onyx.file_store.models import ChatFileType
 from onyx.server.documents.models import PaginatedReturn
+from onyx.server.features.persona.agent_wizard_chat import AgentWizardChatRequest
+from onyx.server.features.persona.agent_wizard_chat import get_wizard_llm
+from onyx.server.features.persona.agent_wizard_chat import sse_delta_generator
 from onyx.server.features.persona.constants import ADMIN_AGENTS_RESOURCE
 from onyx.server.features.persona.constants import AGENTS_RESOURCE
 from onyx.server.features.persona.models import FullPersonaSnapshot
@@ -537,3 +541,27 @@ def get_persona(
             db_session.commit()
 
     return FullPersonaSnapshot.from_model(persona)
+
+
+@agents_router.post("/wizard-chat", tags=PUBLIC_API_TAGS)
+def agent_wizard_chat(
+    body: AgentWizardChatRequest,
+    _: User = Depends(current_chat_accessible_user),
+) -> StreamingResponse:
+    try:
+        llm = get_wizard_llm()
+    except ValueError:
+        raise HTTPException(
+            status_code=503,
+            detail="No default LLM is configured. Configure an LLM provider under Settings.",
+        ) from e
+
+    return StreamingResponse(
+        sse_delta_generator(body, llm),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

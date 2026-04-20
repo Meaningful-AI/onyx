@@ -241,7 +241,7 @@ const ContentPanel = React.forwardRef<
 >(({ children, ...props }, ref) => {
   return (
     <CollapsibleContent>
-      <div ref={ref} className="pt-4" {...props}>
+      <div ref={ref} className="pt-2" {...props}>
         {children}
       </div>
     </CollapsibleContent>

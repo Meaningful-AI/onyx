@@ -1,4 +1,5 @@
 // Always require withSentryConfig
+const path = require("path");
 const { withSentryConfig } = require("@sentry/nextjs");
 
 const cspHeader = `
@@ -17,6 +18,11 @@ const cspHeader = `
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Lock Turbopack to this package so a lockfile in a parent dir (e.g. $HOME) does not
+  // steal the workspace root and drop App Router routes like /api/agent-wizard-chat.
+  turbopack: {
+    root: path.join(__dirname),
+  },
   productionBrowserSourceMaps: false,
   output: "standalone",
   transpilePackages: ["@onyx/opal"],

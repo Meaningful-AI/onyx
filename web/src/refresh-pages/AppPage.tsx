@@ -950,9 +950,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       the classification is "search" (spacer above) or "chat"
                       (spacer below).
 
-                      There is a corresponding note inside `app-layouts.tsx`
-                      (Footer) that explains why the Footer removes its top
-                      padding during chat to compensate for this extra space.
+                      Spacers keep the input bar shadow from being clipped by the
+                      scroll container.
                     */}
                     <div>
                       <div

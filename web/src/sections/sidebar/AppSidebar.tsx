@@ -77,6 +77,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Notification, NotificationType } from "@/interfaces/settings";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import AccountPopover from "@/sections/sidebar/AccountPopover";
+import SidebarFooterVersion from "@/sections/sidebar/SidebarFooterVersion";
 import ChatSearchCommandMenu from "@/sections/sidebar/ChatSearchCommandMenu";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 
@@ -739,7 +740,12 @@ const MemoizedAppSidebarInner = memo(function AppSidebarInner() {
         )}
       </SidebarLayouts.Body>
 
-      <SidebarLayouts.Footer>{settingsButton}</SidebarLayouts.Footer>
+      <SidebarLayouts.Footer>
+        <div className="flex flex-col gap-2">
+          <SidebarFooterVersion folded={folded} />
+          {settingsButton}
+        </div>
+      </SidebarLayouts.Footer>
     </>
   );
 });

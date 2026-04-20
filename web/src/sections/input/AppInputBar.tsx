@@ -92,6 +92,14 @@ export interface AppInputBarProps {
   tabReadingEnabled?: boolean;
   currentTabUrl?: string | null;
   onToggleTabReading?: () => void;
+  /** When false, hides attach-files and paste-to-attach (e.g. agent wizard). Default true. */
+  enableFileAttachments?: boolean;
+  /** When false, hides the microphone control. Default true. */
+  enableVoiceInput?: boolean;
+  /** When false, disables `/` prompt shortcuts popover. Default true. */
+  enablePromptShortcuts?: boolean;
+  /** Overrides default chat placeholder when not in search/voice modes. */
+  chatPlaceholder?: string;
 }
 
 const AppInputBar = React.memo(
@@ -115,6 +123,10 @@ const AppInputBar = React.memo(
     tabReadingEnabled,
     currentTabUrl,
     onToggleTabReading,
+    enableFileAttachments = true,
+    enableVoiceInput = true,
+    enablePromptShortcuts = true,
+    chatPlaceholder,
   }: AppInputBarProps) => {
     // Internal message state - kept local to avoid parent re-renders on every keystroke
     const [message, setMessage] = useState(initialMessage);
@@ -147,7 +159,8 @@ const AppInputBar = React.memo(
     } = useVoiceMode();
     const { sttEnabled } = useVoiceStatus();
     // Show mic button: always if STT configured, or greyed-out for admins to prompt setup
-    const showMicButton = sttEnabled || isAdmin;
+    const showMicButton =
+      (sttEnabled || isAdmin) && enableVoiceInput;
     const isVoicePlaybackActive =
       isTTSPlaying || isTTSLoading || isAwaitingAutoPlaybackStart;
     const isVoicePlaybackControllable = isVoicePlaybackActive && !isRecording;
@@ -300,6 +313,7 @@ const AppInputBar = React.memo(
     }, [showFiles, currentMessageFiles]);
 
     function handlePaste(event: React.ClipboardEvent) {
+      if (!enableFileAttachments) return;
       const pastedFiles = getPastedFilesIfNoText(event.clipboardData);
       if (pastedFiles.length > 0) {
         event.preventDefault();
@@ -381,12 +395,19 @@ const AppInputBar = React.memo(
       (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         const text = event.target.value;
         setMessage(text);
-        handlePromptInput(text);
+        if (enablePromptShortcuts) {
+          handlePromptInput(text);
 
-        const promptFilterQuery = text.startsWith("/") ? text.slice(1) : "";
-        setPromptFilterQuery(promptFilterQuery);
+          const promptFilterQuery = text.startsWith("/") ? text.slice(1) : "";
+          setPromptFilterQuery(promptFilterQuery);
+        }
       },
-      [setMessage, handlePromptInput, setPromptFilterQuery]
+      [
+        setMessage,
+        handlePromptInput,
+        setPromptFilterQuery,
+        enablePromptShortcuts,
+      ]
     );
 
     // Determine if we should hide processing state based on context limits
@@ -436,7 +457,12 @@ const AppInputBar = React.memo(
     function handleKeyDownForPromptShortcuts(
       e: React.KeyboardEvent<HTMLTextAreaElement>
     ) {
-      if (!user?.preferences?.shortcut_enabled || !showPrompts) return;
+      if (
+        !enablePromptShortcuts ||
+        !user?.preferences?.shortcut_enabled ||
+        !showPrompts
+      )
+        return;
 
       if (e.key === "Enter") {
         e.preventDefault();
@@ -483,38 +509,40 @@ const AppInputBar = React.memo(
       >
         {/* Bottom left controls */}
         <div className="flex flex-row items-center">
-          {/* (+) button - always visible */}
-          <FilePickerPopover
-            onFileClick={handleFileClick}
-            onPickRecent={(file: ProjectFile) => {
-              // Check if file with same ID already exists
-              if (
-                !currentMessageFiles.some(
-                  (existingFile) => existingFile.file_id === file.file_id
-                )
-              ) {
-                setCurrentMessageFiles((prev) => [...prev, file]);
-              }
-            }}
-            onUnpickRecent={(file: ProjectFile) => {
-              setCurrentMessageFiles((prev) =>
-                prev.filter(
-                  (existingFile) => existingFile.file_id !== file.file_id
-                )
-              );
-            }}
-            handleUploadChange={handleUploadChange}
-            trigger={(open) => (
-              <Button
-                disabled={disabled}
-                icon={SvgPaperclip}
-                tooltip="Attach Files"
-                interaction={open ? "hover" : "rest"}
-                prominence="tertiary"
-              />
-            )}
-            selectedFileIds={currentMessageFiles.map((f) => f.id)}
-          />
+          {/* (+) attach — optional (hidden in agent wizard, etc.) */}
+          {enableFileAttachments && (
+            <FilePickerPopover
+              onFileClick={handleFileClick}
+              onPickRecent={(file: ProjectFile) => {
+                // Check if file with same ID already exists
+                if (
+                  !currentMessageFiles.some(
+                    (existingFile) => existingFile.file_id === file.file_id
+                  )
+                ) {
+                  setCurrentMessageFiles((prev) => [...prev, file]);
+                }
+              }}
+              onUnpickRecent={(file: ProjectFile) => {
+                setCurrentMessageFiles((prev) =>
+                  prev.filter(
+                    (existingFile) => existingFile.file_id !== file.file_id
+                  )
+                );
+              }}
+              handleUploadChange={handleUploadChange}
+              trigger={(open) => (
+                <Button
+                  disabled={disabled}
+                  icon={SvgPaperclip}
+                  tooltip="Attach Files"
+                  interaction={open ? "hover" : "rest"}
+                  prominence="tertiary"
+                />
+              )}
+              selectedFileIds={currentMessageFiles.map((f) => f.id)}
+            />
+          )}
 
           {/* Controls that load in when data is ready */}
           <div
@@ -730,7 +758,11 @@ const AppInputBar = React.memo(
 
           <div className="flex flex-row items-center w-full">
             <Popover
-              open={user?.preferences?.shortcut_enabled && showPrompts}
+              open={
+                enablePromptShortcuts &&
+                user?.preferences?.shortcut_enabled &&
+                showPrompts
+              }
               onOpenChange={setShowPrompts}
             >
               <Popover.Anchor asChild>
@@ -760,7 +792,7 @@ const AppInputBar = React.memo(
                           ? "Meaningful AI is speaking..."
                           : isSearchMode
                             ? "Search connected sources"
-                            : "How can I help you today?"
+                            : chatPlaceholder ?? "How can I help you today?"
                     }
                     value={message}
                     onKeyDown={(event) => {

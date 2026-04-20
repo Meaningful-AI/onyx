@@ -1,0 +1,14 @@
+{
+  "name": "onyx-dev-tooling",
+  "private": true,
+  "description": "Root-level helpers for local development only (not used in production builds).",
+  "scripts": {
+    "dev": "bash scripts/dev-local.sh",
+    "dev:infra": "docker compose -f deployment/docker_compose/docker-compose.yml -f deployment/docker_compose/docker-compose.dev.yml up -d index relational_db cache minio opensearch",
+    "dev:app": "DEV_SKIP_INFRA=1 DEV_SKIP_MIGRATE=1 bash scripts/dev-local.sh",
+    "dev:migrate": "cd backend && ../.venv/bin/alembic upgrade head"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

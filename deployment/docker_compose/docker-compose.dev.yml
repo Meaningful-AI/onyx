@@ -48,6 +48,9 @@ services:
     ulimits: !reset null
     environment:
       - bootstrap.memory_lock=false
+      # Plain HTTP on 9200 for host clients; matches OPENSEARCH_USE_SSL=false for localhost.
+      # If you change this, recreate the opensearch volume or remove the data dir.
+      - DISABLE_SECURITY_PLUGIN=true
 
   inference_model_server:
     ports:

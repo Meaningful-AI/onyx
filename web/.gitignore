@@ -28,6 +28,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env.playwright.local
 
 # vercel
 .vercel
@@ -37,6 +38,7 @@ yarn-error.log*
 next-env.d.ts
 
 # playwright testing temp files
+verify-agent-wizard.png
 /admin*_auth.json
 /worker*_auth.json
 /user_auth.json
