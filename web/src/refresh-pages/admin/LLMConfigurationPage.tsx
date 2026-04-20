@@ -283,9 +283,25 @@ function NewCustomProviderCard({
 
 export default function LLMConfigurationPage() {
   const { mutate } = useSWRConfig();
-  const { llmProviders: existingLlmProviders, defaultText } =
-    useAdminLLMProviders();
+  const {
+    llmProviders: existingLlmProviders,
+    defaultText,
+    error,
+  } = useAdminLLMProviders();
   const { wellKnownLLMProviders } = useWellKnownLLMProviders();
+
+  if (error) {
+    return (
+      <Message
+        error
+        large
+        icon
+        close={false}
+        text="Failed to load LLM providers. You may not have permission to access this page."
+        className="w-full"
+      />
+    );
+  }
 
   if (!existingLlmProviders) {
     return <ThreeDotsLoader />;
