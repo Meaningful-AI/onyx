@@ -196,7 +196,11 @@ export function parseCSV(text: string): string[][] {
         field += char;
       }
     } else if (char === '"') {
-      inQuotes = true;
+      if (field.trim().length === 0) {
+        inQuotes = true;
+      } else {
+        field += char;
+      }
     } else if (char === ",") {
       fields.push(field);
       field = "";

@@ -59,6 +59,20 @@ describe("parseCSV", () => {
     ]);
   });
 
+  it("preserves stray quotes inside unquoted fields", () => {
+    expect(parseCSV('a,b\nfoo,bar "baz')).toEqual([
+      ["a", "b"],
+      ["foo", 'bar "baz'],
+    ]);
+  });
+
+  it("handles quoted fields after leading whitespace", () => {
+    expect(parseCSV('a,b\nfoo, "bar,baz"')).toEqual([
+      ["a", "b"],
+      ["foo", " bar,baz"],
+    ]);
+  });
+
   it("handles multiple quoted fields with commas", () => {
     expect(parseCSV('"foo, bar","baz, qux"\n"1, 2","3, 4"')).toEqual([
       ["foo, bar", "baz, qux"],
