@@ -56,6 +56,11 @@ server {
         proxy_pass http://api_server;
     }
 
+    # Next.js API routes that must go to web_server, not api_server
+    location = /api/agent-wizard-chat {
+        proxy_pass http://web_server;
+    }
+
     # Match both /api/* and /openapi.json in a single rule
     location ~ ^/(api|openapi.json)(/.*)?$ {
         # Rewrite /api prefixed matched paths
