@@ -19,6 +19,7 @@ from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.query_log import get_query_log_page
 from onyx.db.query_log import get_query_log_rows_for_export
+from onyx.db.query_log import get_query_log_user_emails
 from onyx.db.query_log import QueryLogRow
 from onyx.db.query_log import QueryLogSource
 from onyx.error_handling.error_codes import OnyxErrorCode
@@ -37,6 +38,11 @@ class QueryLogEntry(BaseModel):
     chat_session_id: UUID | None = None
     chat_session_name: str | None = None
     assistant_name: str | None = None
+
+
+class QueryLogUser(BaseModel):
+    email: str
+    display_email: str
 
 
 def _validate_date_range(start_time: datetime | None, end_time: datetime | None) -> None:
@@ -62,6 +68,17 @@ def _query_log_entry_from_row(row: QueryLogRow) -> QueryLogEntry:
 
 def _query_log_entries_from_rows(rows: list[QueryLogRow]) -> list[QueryLogEntry]:
     return [_query_log_entry_from_row(row) for row in rows]
+
+
+@router.get("/admin/query-log/users", tags=PUBLIC_API_TAGS)
+def get_admin_query_log_users(
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    db_session: Session = Depends(get_session),
+) -> list[QueryLogUser]:
+    return [
+        QueryLogUser(email=email, display_email=get_display_email(email))
+        for email in get_query_log_user_emails(db_session=db_session)
+    ]
 
 
 @router.get("/admin/query-log", tags=PUBLIC_API_TAGS)

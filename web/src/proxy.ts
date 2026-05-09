@@ -29,8 +29,6 @@ export const config = {
     // Enterprise Edition routes (for /ee rewriting)
     // These are ONLY the EE-specific routes that should be rewritten
     "/admin/groups/:path*",
-    "/admin/performance/usage/:path*",
-    "/admin/performance/query-history/:path*",
     "/admin/theme/:path*",
     "/admin/performance/custom-analytics/:path*",
     "/admin/standard-answer/:path*",
@@ -44,8 +42,6 @@ export const config = {
 // Enterprise Edition specific routes (ONLY these get /ee rewriting)
 const EE_ROUTES = [
   "/admin/groups",
-  "/admin/performance/usage",
-  "/admin/performance/query-history",
   "/admin/theme",
   "/admin/performance/custom-analytics",
   "/admin/standard-answer",
@@ -67,9 +63,11 @@ export async function proxy(request: NextRequest) {
   if (isProtectedRoute && !isPublicRoute) {
     const authCookie = request.cookies.get(FASTAPI_USERS_AUTH_COOKIE_NAME);
     const anonymousCookie = request.cookies.get(ANONYMOUS_USER_COOKIE_NAME);
+    const hasDebugAuthCookie =
+      process.env.NODE_ENV === "development" && !!process.env.DEBUG_AUTH_COOKIE;
 
     // Allow access if user has either a regular auth cookie or anonymous user cookie
-    if (!authCookie && !anonymousCookie) {
+    if (!authCookie && !anonymousCookie && !hasDebugAuthCookie) {
       const loginUrl = new URL("/auth/login", request.url);
       // Preserve full URL including query params and hash for deep linking
       const fullPath = pathname + request.nextUrl.search + request.nextUrl.hash;

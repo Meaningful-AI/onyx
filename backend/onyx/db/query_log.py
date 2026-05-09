@@ -13,6 +13,7 @@ from sqlalchemy import func
 from sqlalchemy import literal
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy.orm import Session
 
@@ -69,7 +70,7 @@ def _chat_query_select(
     if end_time:
         stmt = stmt.where(ChatMessage.time_sent <= end_time)
     if user_email:
-        stmt = stmt.where(User.email.ilike(f"%{user_email}%"))
+        stmt = stmt.where(User.email == user_email)
     if query_text:
         stmt = stmt.where(ChatMessage.message.ilike(f"%{query_text}%"))
 
@@ -102,7 +103,7 @@ def _search_query_select(
     if end_time:
         stmt = stmt.where(SearchQuery.created_at <= end_time)
     if user_email:
-        stmt = stmt.where(User.email.ilike(f"%{user_email}%"))
+        stmt = stmt.where(User.email == user_email)
     if query_text:
         stmt = stmt.where(SearchQuery.query.ilike(f"%{query_text}%"))
 
@@ -151,9 +152,7 @@ def _query_log_rows_from_mappings(
             user_email=row["user_email"],
             query=row["query"],
             time_created=row["time_created"],
-            chat_session_id=(
-                UUID(row["chat_session_id"]) if row["chat_session_id"] else None
-            ),
+            chat_session_id=(UUID(row["chat_session_id"]) if row["chat_session_id"] else None),
             chat_session_name=row["chat_session_name"],
             assistant_name=row["assistant_name"],
         )
@@ -209,11 +208,25 @@ def get_query_log_rows_for_export(
         source=source,
     )
 
-    stmt = (
-        select(query_log)
-        .order_by(desc(query_log.c.time_created), desc(query_log.c.id))
-        .limit(limit)
-    )
+    stmt = select(query_log).order_by(desc(query_log.c.time_created), desc(query_log.c.id)).limit(limit)
     rows = db_session.execute(stmt).mappings().all()
 
     return _query_log_rows_from_mappings(rows)
+
+
+def get_query_log_user_emails(db_session: Session) -> list[str]:
+    chat_users = (
+        select(User.email.label("email"))
+        .select_from(ChatMessage)
+        .join(ChatSession, ChatSession.id == ChatMessage.chat_session_id)
+        .join(User, User.id == ChatSession.user_id)
+        .where(ChatMessage.message_type == MessageType.USER)
+        .where(ChatMessage.message != "")
+    )
+
+    search_users = select(User.email.label("email")).select_from(SearchQuery).join(User, User.id == SearchQuery.user_id)
+
+    users = union(chat_users, search_users).subquery()
+    stmt = select(users.c.email).where(users.c.email.is_not(None)).order_by(users.c.email)
+
+    return [email for email in db_session.scalars(stmt).all() if email]
