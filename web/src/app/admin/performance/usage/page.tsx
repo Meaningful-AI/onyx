@@ -161,6 +161,9 @@ const topAssistantColumns = [
   topAssistantsTc.column("assistant_name", {
     header: "Assistant",
     weight: 44,
+    cell: (value) => (
+      <span className="text-sm leading-5 text-text-04">{value}</span>
+    ),
   }),
   topAssistantsTc.column("messages", {
     header: "Messages",
