@@ -48,6 +48,7 @@ interface QueryLogUser {
 const route = ADMIN_ROUTES.QUERY_HISTORY;
 const PAGE_SIZE = 50;
 const ALL_USERS_VALUE = "__all_users__";
+const QUERY_PREVIEW_LENGTH = 120;
 const tc = createTableColumns<QueryLogEntry>();
 
 function toStartIso(date: string) {
@@ -99,6 +100,18 @@ function formatDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function normalizePreviewText(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function getQueryPreview(value: string) {
+  const normalized = normalizePreviewText(value);
+  if (normalized.length <= QUERY_PREVIEW_LENGTH) {
+    return normalized;
+  }
+  return `${normalized.slice(0, QUERY_PREVIEW_LENGTH).trimEnd()}...`;
 }
 
 async function downloadQueryLog(params: URLSearchParams) {
@@ -193,23 +206,36 @@ export default function QueryHistoryPage() {
           const isExpanded = expandedQueryIds.has(row.id);
           const description =
             row.chat_session_name || row.assistant_name || row.source;
+          const preview = getQueryPreview(value);
 
           return (
             <button
               type="button"
-              className="group flex w-full flex-col items-start gap-1 text-left"
+              className={cn(
+                "block w-full min-w-0 max-w-full rounded-08 py-1 text-left outline-none",
+                "focus-visible:ring-2 focus-visible:ring-border-05",
+                !isExpanded && "max-h-11 overflow-hidden"
+              )}
               aria-expanded={isExpanded}
-              onClick={() => toggleExpandedQuery(row.id)}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleExpandedQuery(row.id);
+              }}
             >
               <span
                 className={cn(
-                  "whitespace-pre-wrap break-words text-sm leading-5 text-text-04",
-                  !isExpanded && "line-clamp-2"
+                  "block min-w-0 max-w-full text-sm leading-5 text-text-04",
+                  isExpanded ? "whitespace-pre-wrap break-words" : "truncate"
                 )}
               >
-                {value}
+                {isExpanded ? value : preview}
               </span>
-              <span className="line-clamp-1 text-xs text-text-02">
+              <span
+                className={cn(
+                  "block min-w-0 max-w-full truncate text-xs leading-4 text-text-02",
+                  isExpanded ? "mt-2" : "mt-0.5"
+                )}
+              >
                 {description}
               </span>
             </button>
@@ -348,27 +374,53 @@ export default function QueryHistoryPage() {
             <SimpleLoader />
           </div>
         ) : (
-          <Table
-            data={data?.items ?? []}
-            columns={columns}
-            getRowId={(row) => row.id}
-            pageSize={PAGE_SIZE}
-            serverSide={{
-              totalItems: data?.total_items ?? 0,
-              isLoading,
-              onPaginationChange: (nextPage) => setPage(nextPage),
-              onSortingChange: () => undefined,
-              onSearchTermChange: () => undefined,
-            }}
-            emptyState={
-              <IllustrationContent
-                illustration={SvgNoResult}
-                title="No queries found"
-                description="No query log entries match the current filters."
-              />
-            }
-            footer={{ units: "queries" }}
-          />
+          <div className="query-history-table">
+            <Table
+              data={data?.items ?? []}
+              columns={columns}
+              getRowId={(row) => row.id}
+              onRowClick={(row) => toggleExpandedQuery(row.id)}
+              pageSize={PAGE_SIZE}
+              serverSide={{
+                totalItems: data?.total_items ?? 0,
+                isLoading,
+                onPaginationChange: (nextPage) => setPage(nextPage),
+                onSortingChange: () => undefined,
+                onSearchTermChange: () => undefined,
+              }}
+              emptyState={
+                <IllustrationContent
+                  illustration={SvgNoResult}
+                  title="No queries found"
+                  description="No query log entries match the current filters."
+                />
+              }
+              footer={{ units: "queries" }}
+            />
+            <style jsx global>{`
+              .query-history-table table {
+                table-layout: fixed;
+                width: 100% !important;
+              }
+
+              .query-history-table td[data-column-id="query"],
+              .query-history-table td[data-column-id="query"] .tbl-cell-inner {
+                overflow: visible;
+              }
+
+              .query-history-table td[data-column-id="query"] .tbl-cell-inner {
+                align-items: flex-start;
+                height: auto;
+                min-height: 3.25rem;
+                padding-bottom: 0.25rem;
+                padding-top: 0.25rem;
+              }
+
+              .query-history-table tbody .tbl-row {
+                cursor: pointer;
+              }
+            `}</style>
+          </div>
         )}
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>
