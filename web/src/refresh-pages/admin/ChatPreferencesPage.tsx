@@ -84,6 +84,7 @@ interface ChatPreferencesFormValues {
   maximum_chat_retention_days: string;
   anonymous_user_enabled: boolean;
   disable_default_assistant: boolean;
+  max_tool_calls: string;
 
   // File limits
   user_file_max_upload_size_mb: string;
@@ -371,6 +372,7 @@ function ChatPreferencesForm() {
   // Track initial text values to avoid unnecessary saves on blur
   const initialCompanyName = useRef(values.company_name);
   const initialCompanyDescription = useRef(values.company_description);
+  const initialMaxToolCalls = useRef(values.max_tool_calls);
 
   // Tools availability
   const { tools: availableTools } = useAvailableTools();
@@ -547,7 +549,7 @@ function ChatPreferencesForm() {
             >
               <InputTextAreaField
                 name="company_description"
-                placeholder="Describe your team and how Meaningful AI should behave."
+                placeholder="Describe your team and how PHX Holdings should behave."
                 rows={4}
                 maxRows={10}
                 autoResize
@@ -872,7 +874,7 @@ function ChatPreferencesForm() {
                 <Card>
                   <InputLayouts.Horizontal
                     title="Keep Chat History"
-                    description="Specify how long Meaningful AI should retain chats in your organization."
+                    description="Specify how long PHX Holdings should retain chats in your organization."
                   >
                     <InputSelectField
                       name="maximum_chat_retention_days"
@@ -944,6 +946,31 @@ function ChatPreferencesForm() {
                         void saveSettings({
                           disable_default_assistant: checked,
                         });
+                      }}
+                    />
+                  </InputLayouts.Horizontal>
+                </Card>
+
+                <Card>
+                  <InputLayouts.Horizontal
+                    title="Max Tool Calls per Turn"
+                    description="Maximum number of tool call cycles the agent can run in a single chat turn. Higher values allow more complex multi-step tasks but use more tokens."
+                  >
+                    <InputTypeInField
+                      name="max_tool_calls"
+                      inputMode="numeric"
+                      showClearButton={false}
+                      pattern="[0-9]*"
+                      placeholder="Default: 15"
+                      onBlur={() => {
+                        const raw = values.max_tool_calls;
+                        const parsed = parseInt(raw, 10);
+                        if (raw !== initialMaxToolCalls.current) {
+                          const value =
+                            !isNaN(parsed) && parsed > 0 ? parsed : null;
+                          void saveSettings({ max_tool_calls: value });
+                          initialMaxToolCalls.current = raw;
+                        }
                       }}
                     />
                   </InputLayouts.Horizontal>
@@ -1060,6 +1087,7 @@ export default function ChatPreferencesPage() {
     anonymous_user_enabled: settings.settings.anonymous_user_enabled ?? false,
     disable_default_assistant:
       settings.settings.disable_default_assistant ?? false,
+    max_tool_calls: settings.settings.max_tool_calls?.toString() ?? "",
 
     // File limits — for upload size: 0/null means "use default";
     // for token threshold: null means "use default", 0 means "no limit".

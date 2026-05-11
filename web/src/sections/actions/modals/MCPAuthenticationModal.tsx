@@ -406,7 +406,7 @@ export default function MCPAuthenticationModal({
                             {isOAuthEnabled && (
                               <InputSelect.Item
                                 value={MCPAuthenticationType.PT_OAUTH}
-                                description="Forward the user's OAuth access token used to authenticate Meaningful AI."
+                                description="Forward the user's OAuth access token used to authenticate PHX Holdings."
                               >
                                 OAuth Pass-through
                               </InputSelect.Item>
@@ -504,8 +504,8 @@ export default function MCPAuthenticationModal({
                         </Text>
                         <Text as="p" text03 secondaryBody>
                           If your server does not support DCR, you need register
-                          your Meaningful AI instance with the server provider to obtain
-                          these credentials first. Make sure to grant Meaningful AI
+                          your PHX Holdings instance with the server provider to obtain
+                          these credentials first. Make sure to grant PHX Holdings
                           necessary scopes/permissions for your actions.
                         </Text>
 
@@ -627,7 +627,7 @@ export default function MCPAuthenticationModal({
                   {values.auth_type === MCPAuthenticationType.PT_OAUTH && (
                     <Message
                       text="Use pass-through for services with shared identity provider."
-                      description="Meaningful AI will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider."
+                      description="PHX Holdings will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider."
                       default
                       medium
                       static

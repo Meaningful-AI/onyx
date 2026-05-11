@@ -154,7 +154,7 @@ const LLMStep = memo(
             <ContentAction
               icon={SvgCpu}
               title="Connect your LLM models"
-              description="Meaningful AI supports both self-hosted models and popular providers."
+              description="PHX Holdings supports both self-hosted models and popular providers."
               sizePreset="main-ui"
               variant="section"
               paddingVariant="lg"

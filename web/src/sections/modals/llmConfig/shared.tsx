@@ -736,8 +736,8 @@ function ModalWrapperInner({
             moreIcon2={({ className, style, ...rest }) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src="/meaningful-ai-icon.png"
-                alt="Meaningful AI"
+                src="/phx-icon.png"
+                alt="PHX Holdings"
                 className={cn("object-contain", className)}
                 style={style as React.CSSProperties}
               />

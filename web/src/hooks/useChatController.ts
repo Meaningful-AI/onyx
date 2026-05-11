@@ -844,6 +844,10 @@ export default function useChatController({
             if (!packet) {
               continue;
             }
+            const hasMessageResponseIdInfo = Object.hasOwn(
+              packet,
+              "reserved_assistant_message_id"
+            );
 
             // We've processed initial packets and are starting to stream content.
             // Transition from 'loading' to 'streaming'.
@@ -872,9 +876,7 @@ export default function useChatController({
               }
             }
 
-            if (
-              (packet as MessageResponseIDInfo).reserved_assistant_message_id
-            ) {
+            if (hasMessageResponseIdInfo) {
               newAgentMessageId = (packet as MessageResponseIDInfo)
                 .reserved_assistant_message_id;
             }
@@ -898,6 +900,10 @@ export default function useChatController({
                   modelDisplayNames[mi] = slot.model_name;
                 }
               }
+              continue;
+            }
+
+            if (hasMessageResponseIdInfo) {
               continue;
             }
 

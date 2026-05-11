@@ -23,7 +23,7 @@ import { SidebarTab } from "@opal/components";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import Separator from "@/refresh-components/Separator";
 import Spacer from "@/refresh-components/Spacer";
-import { SvgArrowUpCircle, SvgSearch, SvgX } from "@opal/icons";
+import { SvgSearch, SvgX } from "@opal/icons";
 import {
   useBillingInformation,
   useLicense,
@@ -135,8 +135,6 @@ function buildItems(
   // 5. Permissions
   if (!isCurator) {
     add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.USERS);
-    addDisabled(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS, !enableEnterprise);
-    addDisabled(SECTIONS.PERMISSIONS, ADMIN_ROUTES.SCIM, !enableEnterprise);
   } else if (enableEnterprise) {
     add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS);
   }
@@ -146,34 +144,14 @@ function buildItems(
     if (hasSubscription) {
       add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.BILLING);
     }
-    addDisabled(
-      SECTIONS.ORGANIZATION,
-      ADMIN_ROUTES.TOKEN_RATE_LIMITS,
-      !enableEnterprise
-    );
-    addDisabled(SECTIONS.ORGANIZATION, ADMIN_ROUTES.THEME, !enableEnterprise);
   }
 
   // 7. Usage (admin only)
   if (!isCurator) {
-    addDisabled(SECTIONS.USAGE, ADMIN_ROUTES.USAGE, !enableEnterprise);
+    add(SECTIONS.USAGE, ADMIN_ROUTES.USAGE);
     if (settings?.settings.query_history_type !== "disabled") {
-      addDisabled(
-        SECTIONS.USAGE,
-        ADMIN_ROUTES.QUERY_HISTORY,
-        !enableEnterprise
-      );
+      add(SECTIONS.USAGE, ADMIN_ROUTES.QUERY_HISTORY);
     }
-  }
-
-  // 8. Upgrade Plan (admin only, no subscription)
-  if (!isCurator && !hasSubscription) {
-    items.push({
-      section: SECTIONS.UNLABELED,
-      name: "Upgrade Plan",
-      icon: SvgArrowUpCircle,
-      link: ADMIN_ROUTES.BILLING.path,
-    });
   }
 
   return items;

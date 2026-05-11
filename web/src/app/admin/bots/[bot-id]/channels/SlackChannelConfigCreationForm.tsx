@@ -221,7 +221,7 @@ export const SlackChannelConfigCreationForm = ({
             toast.error(
               `Error ${
                 isUpdate ? "updating" : "creating"
-              } Meaningful AI Bot config - ${errorMsg}`
+              } PHX Assistant config - ${errorMsg}`
             );
           }
         }}

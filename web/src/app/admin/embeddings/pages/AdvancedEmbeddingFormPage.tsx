@@ -231,7 +231,7 @@ const AdvancedEmbeddingFormPage = forwardRef<
               <BooleanFormField
                 subtext={
                   NEXT_PUBLIC_CLOUD_ENABLED
-                    ? "Contextual RAG disabled in Meaningful AI Cloud"
+                    ? "Contextual RAG disabled in PHX Holdings Cloud"
                     : "Enable contextual RAG for all chunk sizes."
                 }
                 optional

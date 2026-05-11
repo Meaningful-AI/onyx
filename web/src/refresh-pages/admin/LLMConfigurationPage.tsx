@@ -283,9 +283,25 @@ function NewCustomProviderCard({
 
 export default function LLMConfigurationPage() {
   const { mutate } = useSWRConfig();
-  const { llmProviders: existingLlmProviders, defaultText } =
-    useAdminLLMProviders();
+  const {
+    llmProviders: existingLlmProviders,
+    defaultText,
+    error,
+  } = useAdminLLMProviders();
   const { wellKnownLLMProviders } = useWellKnownLLMProviders();
+
+  if (error) {
+    return (
+      <Message
+        error
+        large
+        icon
+        close={false}
+        text="Failed to load LLM providers. You may not have permission to access this page."
+        className="w-full"
+      />
+    );
+  }
 
   if (!existingLlmProviders) {
     return <ThreeDotsLoader />;
@@ -340,7 +356,7 @@ export default function LLMConfigurationPage() {
           <Card border="solid" rounding="lg">
             <HorizontalInput
               title="Default Model"
-              description="This model will be used by Meaningful AI by default in your chats."
+              description="This model will be used by PHX Holdings by default in your chats."
               nonInteractive
               center
             >
@@ -420,7 +436,7 @@ export default function LLMConfigurationPage() {
         >
           <Content
             title="Add Provider"
-            description="Meaningful AI supports both popular providers and self-hosted models."
+            description="PHX Holdings supports both popular providers and self-hosted models."
             sizePreset="main-content"
             variant="section"
           />

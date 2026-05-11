@@ -7,6 +7,16 @@ import {
   BackendChatSession,
   FeedbackType,
 } from "../interfaces";
+
+export type HtmlPreviewSource =
+  | { kind: "content"; content: string }
+  | { kind: "file"; fileId: string };
+
+export interface HtmlPreviewState {
+  visible: boolean;
+  source: HtmlPreviewSource | null;
+  title: string;
+}
 import {
   getLatestMessageChain,
   getMessageByMessageId,
@@ -28,6 +38,7 @@ interface ChatSessionData {
   hasPerformedInitialScroll: boolean;
   documentSidebarVisible: boolean;
   hasSentLocalUserMessage: boolean;
+  htmlPreview: HtmlPreviewState;
 
   // Session-specific state (previously global)
   isFetchingChatMessages: boolean;
@@ -101,6 +112,7 @@ interface ChatSessionStore {
   updateCurrentDocumentSidebarVisible: (
     documentSidebarVisible: boolean
   ) => void;
+  updateCurrentHtmlPreview: (update: Partial<HtmlPreviewState>) => void;
   updateHasSentLocalUserMessage: (
     sessionId: string,
     hasSentLocalUserMessage: boolean
@@ -163,6 +175,7 @@ const createInitialSessionData = (
   hasPerformedInitialScroll: true,
   documentSidebarVisible: false,
   hasSentLocalUserMessage: false,
+  htmlPreview: { visible: false, source: null, title: "" },
 
   // Session-specific state defaults
   isFetchingChatMessages: false,
@@ -376,6 +389,18 @@ export const useChatSessionStore = create<ChatSessionStore>()((set, get) => ({
         currentSessionId,
         documentSidebarVisible
       );
+    }
+  },
+
+  updateCurrentHtmlPreview: (update: Partial<HtmlPreviewState>) => {
+    const { currentSessionId } = get();
+    if (currentSessionId) {
+      const session = get().sessions.get(currentSessionId);
+      if (session) {
+        get().updateSessionData(currentSessionId, {
+          htmlPreview: { ...session.htmlPreview, ...update },
+        });
+      }
     }
   },
 
@@ -616,6 +641,21 @@ export const useDocumentSidebarVisible = () =>
       ? sessions.get(currentSessionId)
       : null;
     return currentSession?.documentSidebarVisible || false;
+  });
+
+const DEFAULT_HTML_PREVIEW: HtmlPreviewState = {
+  visible: false,
+  source: null,
+  title: "",
+};
+
+export const useCurrentHtmlPreview = () =>
+  useChatSessionStore((state) => {
+    const { currentSessionId, sessions } = state;
+    const currentSession = currentSessionId
+      ? sessions.get(currentSessionId)
+      : null;
+    return currentSession?.htmlPreview ?? DEFAULT_HTML_PREVIEW;
   });
 
 export const useSelectedNodeForDocDisplay = () =>

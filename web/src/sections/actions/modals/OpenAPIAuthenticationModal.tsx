@@ -392,7 +392,7 @@ export default function OpenAPIAuthenticationModal({
                               {isOAuthEnabled && (
                                 <InputSelect.Item
                                   value="pt-oauth"
-                                  description="Forward the user's OAuth access token used to authenticate Meaningful AI."
+                                  description="Forward the user's OAuth access token used to authenticate PHX Holdings."
                                 >
                                   OAuth Pass-through
                                 </InputSelect.Item>
@@ -650,7 +650,7 @@ export default function OpenAPIAuthenticationModal({
                     {values.authMethod === "pt-oauth" && (
                       <Message
                         text="Use pass-through for services with shared identity provider."
-                        description="Meaningful AI will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider."
+                        description="PHX Holdings will forward the user's OAuth access token directly to the server as an Authorization header. Make sure the server supports authentication with the same provider."
                         default
                         medium
                         static

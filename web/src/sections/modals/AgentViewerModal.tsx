@@ -40,6 +40,7 @@ import DocumentSetCard from "@/sections/cards/DocumentSetCard";
 import { getDisplayName } from "@/lib/llmConfig/utils";
 import { useLLMProviders } from "@/hooks/useLLMProviders";
 import { Interactive } from "@opal/core";
+import { SYSTEM_TOOL_ICONS } from "@/app/app/components/tools/constants";
 
 /**
  * Read-only MCP Server card for the viewer modal.
@@ -106,6 +107,28 @@ function ViewerOpenApiToolCard({ tool }: { tool: ToolSnapshot }) {
           <Content
             icon={SvgActions}
             title={tool.display_name}
+            description={tool.description}
+            sizePreset="main-ui"
+            variant="section"
+          />
+        </div>
+      </ExpandableCard.Header>
+    </ExpandableCard.Root>
+  );
+}
+
+function ViewerBuiltInToolCard({ tool }: { tool: ToolSnapshot }) {
+  const Icon = tool.in_code_tool_id
+    ? SYSTEM_TOOL_ICONS[tool.in_code_tool_id] || SvgActions
+    : SvgActions;
+
+  return (
+    <ExpandableCard.Root>
+      <ExpandableCard.Header>
+        <div className="p-2">
+          <Content
+            icon={Icon}
+            title={tool.display_name || tool.name}
             description={tool.description}
             sizePreset="main-ui"
             variant="section"
@@ -212,6 +235,11 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
       agent.tools.filter((t) => !t.in_code_tool_id && t.mcp_server_id == null),
     [agent.tools]
   );
+  const builtInTools = useMemo(
+    () =>
+      agent.tools.filter((t) => t.in_code_tool_id && t.mcp_server_id == null),
+    [agent.tools]
+  );
 
   // Fetch MCP server metadata for display
   const { mcpData } = useMcpServersForAgentEditor();
@@ -228,7 +256,10 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
     [mcpServers, mcpToolsByServerId]
   );
 
-  const hasActions = mcpServersWithTools.length > 0 || openApiTools.length > 0;
+  const hasActions =
+    mcpServersWithTools.length > 0 ||
+    openApiTools.length > 0 ||
+    builtInTools.length > 0;
   const defaultModel = getDisplayName(agent, llmProviders ?? []);
 
   return (
@@ -261,7 +292,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
             )}
             <Content
               icon={SvgUser}
-              title={agent.owner?.email ?? "Meaningful AI"}
+              title={agent.owner?.email ?? "PHX Holdings"}
               sizePreset="main-ui"
               variant="body"
               prominence="muted"
@@ -328,6 +359,9 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                   {openApiTools.map((tool) => (
                     <ViewerOpenApiToolCard key={tool.id} tool={tool} />
                   ))}
+                  {builtInTools.map((tool) => (
+                    <ViewerBuiltInToolCard key={tool.id} tool={tool} />
+                  ))}
                 </Section>
               ) : (
                 <EmptyMessage title="No Actions" />
@@ -352,7 +386,7 @@ export default function AgentViewerModal({ agent }: AgentViewerModalProps) {
                 {defaultModel && (
                   <Horizontal
                     title="Default Model"
-                    description="This model will be used by Meaningful AI by default in your chats."
+                    description="This model will be used by PHX Holdings by default in your chats."
                     nonInteractive
                     sizePreset="main-ui"
                   >

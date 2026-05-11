@@ -37,7 +37,7 @@ function GroupsPage() {
             close={false}
             icon
             text="Upcoming changes to permissions"
-            description="Meaningful AI is transitioning to group-based permissions, enabling more flexible access control through configurable permissions per group. We recommend reviewing your group structure to prepare for this update."
+            description="PHX Holdings is transitioning to group-based permissions, enabling more flexible access control through configurable permissions per group. We recommend reviewing your group structure to prepare for this update."
             actions="Learn more"
             actionIcon={SvgExternalLink}
             onAction={() =>

@@ -199,7 +199,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
             <div className="flex flex-col gap-1 py-1 px-2">
               <Content
                 icon={SvgUser}
-                title={agent.owner?.email || "Meaningful AI"}
+                title={agent.owner?.email || "PHX Holdings"}
                 sizePreset="secondary"
                 variant="body"
                 prominence="muted"

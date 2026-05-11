@@ -45,6 +45,9 @@ export interface Settings {
   // Default Assistant settings
   disable_default_assistant?: boolean;
 
+  // Agent tool call limit — max LLM cycles per chat turn.
+  max_tool_calls?: number | null;
+
   // Onyx Craft (Build Mode) feature flag
   onyx_craft_enabled?: boolean;
 

@@ -78,7 +78,7 @@ export function AccessTypeForm({
       name: "Public",
       value: "public",
       description:
-        "Everyone with an account on Meaningful AI can access the documents pulled in by this connector",
+        "Everyone with an account on PHX Holdings can access the documents pulled in by this connector",
       disabled: false,
       disabledReason: "",
     },
@@ -89,7 +89,7 @@ export function AccessTypeForm({
       name: "Auto Sync Permissions",
       value: "sync",
       description:
-        "We will automatically sync permissions from the source. A document will be searchable in Meaningful AI if and only if the user performing the search has permission to access the document in the source.",
+        "We will automatically sync permissions from the source. A document will be searchable in PHX Holdings if and only if the user performing the search has permission to access the document in the source.",
       disabled: isSyncDisabledByAuth,
       disabledReason:
         "Current credential auth method doesn't support Auto Sync Permissions. Please change the credential auth method to a supported one.",

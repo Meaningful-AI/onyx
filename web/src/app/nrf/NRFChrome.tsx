@@ -70,9 +70,9 @@ export default function NRFChrome() {
 
   const customFooterContent =
     settings?.enterpriseSettings?.custom_lower_disclaimer_content ||
-    `[Meaningful AI ${
+    `[PHX Holdings ${
       settings?.webVersion || "dev"
-    }](https://www.meaningful-ai.com/) - AI Platform`;
+    }](https://www.meaningful-ai.com/) - Manufacturing Intelligence Platform`;
 
   const showModeToggle =
     isPaidEnterpriseFeaturesEnabled &&

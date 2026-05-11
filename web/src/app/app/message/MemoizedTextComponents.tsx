@@ -23,6 +23,7 @@ import {
 } from "@/refresh-components/buttons/source-tag/sourceTagUtils";
 import { openDocument } from "@/lib/search/utils";
 import { ensureHrefProtocol } from "@/lib/utils";
+import { useChatSessionStore } from "@/app/app/stores/useChatSessionStore";
 
 export const MemoizedAnchor = memo(
   ({
@@ -134,6 +135,9 @@ export const MemoizedLink = memo(
     [key: string]: any;
   }) => {
     const value = rest.children;
+    const updateCurrentHtmlPreview = useChatSessionStore(
+      (s) => s.updateCurrentHtmlPreview
+    );
 
     // Convert document to SourceInfo for SourceTag
     const documentSourceInfo = useMemo(() => {
@@ -187,15 +191,24 @@ export const MemoizedLink = memo(
     if (isChatFile && updatePresentingDocument) {
       const fileId = url!.split("/api/chat/file/")[1]?.split(/[?#]/)[0] || "";
       const filename = value?.toString() || "download";
+      const isHtml = /\.html?$/i.test(filename);
       return (
         <a
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            updatePresentingDocument({
-              document_id: fileId,
-              semantic_identifier: filename,
-            });
+            if (isHtml) {
+              updateCurrentHtmlPreview({
+                visible: true,
+                source: { kind: "file", fileId },
+                title: filename,
+              });
+            } else {
+              updatePresentingDocument({
+                document_id: fileId,
+                semantic_identifier: filename,
+              });
+            }
           }}
           className="cursor-pointer text-link hover:text-link-hover"
         >

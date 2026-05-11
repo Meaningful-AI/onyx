@@ -196,7 +196,11 @@ export function parseCSV(text: string): string[][] {
         field += char;
       }
     } else if (char === '"') {
-      inQuotes = true;
+      if (field.trim().length === 0) {
+        inQuotes = true;
+      } else {
+        field += char;
+      }
     } else if (char === ",") {
       fields.push(field);
       field = "";
@@ -211,10 +215,6 @@ export function parseCSV(text: string): string[][] {
     } else {
       field += char;
     }
-  }
-
-  if (inQuotes) {
-    throw new Error("Malformed CSV: unterminated quoted field");
   }
 
   if (field.length > 0 || fields.length > 0) {

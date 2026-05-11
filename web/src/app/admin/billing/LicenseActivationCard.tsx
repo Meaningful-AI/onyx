@@ -155,7 +155,7 @@ export default function LicenseActivationCard({
           </Button>
         </Section>
         <Text secondaryBody text03>
-          Manually add and activate a license for this Meaningful AI instance.
+          Manually add and activate a license for this PHX Holdings instance.
         </Text>
       </Section>
 
@@ -180,7 +180,7 @@ export default function LicenseActivationCard({
             subDescription={
               error
                 ? undefined
-                : "Paste or attach your license key file you received from Meaningful AI."
+                : "Paste or attach your license key file you received from PHX Holdings."
             }
           >
             <InputFile

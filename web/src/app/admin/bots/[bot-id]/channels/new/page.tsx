@@ -108,7 +108,7 @@ export default function Page(props: { params: Promise<{ "bot-id": string }> }) {
     <SettingsLayouts.Root>
       <SettingsLayouts.Header
         icon={SvgSlack}
-        title="Configure Meaningful AI Bot for Slack Channel"
+        title="Configure PHX Assistant for Slack Channel"
         separator
         backButton
       />

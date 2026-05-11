@@ -350,6 +350,8 @@ services:
     env_file:
       - .env.nginx
     environment:
+      # Prevent nginx entrypoint from double-processing templates (our CMD handles it)
+      - NGINX_ENVSUBST_TEMPLATE_DIR=/dev/null
       # Nginx proxy timeout settings (in seconds)
       - NGINX_PROXY_CONNECT_TIMEOUT=${NGINX_PROXY_CONNECT_TIMEOUT:-300}
       - NGINX_PROXY_SEND_TIMEOUT=${NGINX_PROXY_SEND_TIMEOUT:-300}
