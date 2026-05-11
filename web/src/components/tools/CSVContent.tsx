@@ -217,10 +217,6 @@ export function parseCSV(text: string): string[][] {
     }
   }
 
-  if (inQuotes) {
-    throw new Error("Malformed CSV: unterminated quoted field");
-  }
-
   if (field.length > 0 || fields.length > 0) {
     fields.push(field);
     rows.push(fields);

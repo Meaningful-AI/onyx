@@ -80,16 +80,12 @@ describe("parseCSV", () => {
     ]);
   });
 
-  it("throws on unterminated quoted field", () => {
-    expect(() => parseCSV('a,b\n"foo,bar')).toThrow(
-      "Malformed CSV: unterminated quoted field"
-    );
+  it("handles unterminated quoted fields as best-effort preview content", () => {
+    expect(parseCSV('a,b\n"foo,bar')).toEqual([["a", "b"], ["foo,bar"]]);
   });
 
-  it("throws on unterminated quote at end of input", () => {
-    expect(() => parseCSV('"unterminated')).toThrow(
-      "Malformed CSV: unterminated quoted field"
-    );
+  it("handles unterminated quotes at end of input", () => {
+    expect(parseCSV('"unterminated')).toEqual([["unterminated"]]);
   });
 
   it("returns empty array for empty input", () => {
