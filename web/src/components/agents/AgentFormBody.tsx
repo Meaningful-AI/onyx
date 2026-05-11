@@ -318,7 +318,11 @@ export default function AgentFormBody({
     <>
       {highlight(
         "name",
-        <GeneralLayouts.Section flexDirection="row" gap={2.5} alignItems="start">
+        <GeneralLayouts.Section
+          flexDirection="row"
+          gap={2.5}
+          alignItems="start"
+        >
           <GeneralLayouts.Section>
             <InputLayouts.Vertical name="name" title="Name">
               <InputTypeInField name="name" placeholder="Name your agent" />
@@ -393,9 +397,7 @@ export default function AgentFormBody({
           selectedDocumentIds={values.document_ids}
           onDocumentIdsChange={(ids) => setFieldValue("document_ids", ids)}
           selectedFolderIds={values.hierarchy_node_ids}
-          onFolderIdsChange={(ids) =>
-            setFieldValue("hierarchy_node_ids", ids)
-          }
+          onFolderIdsChange={(ids) => setFieldValue("hierarchy_node_ids", ids)}
           selectedFileIds={values.user_file_ids}
           onFileIdsChange={(ids) => setFieldValue("user_file_ids", ids)}
           allRecentFiles={allRecentFiles}
@@ -424,9 +426,7 @@ export default function AgentFormBody({
                 side="top"
               >
                 <Card
-                  variant={
-                    isImageGenerationAvailable ? undefined : "disabled"
-                  }
+                  variant={isImageGenerationAvailable ? undefined : "disabled"}
                 >
                   <InputLayouts.Horizontal
                     name="image_generation"
@@ -464,9 +464,7 @@ export default function AgentFormBody({
                 </InputLayouts.Horizontal>
               </Card>
 
-              <Card
-                variant={!!codeInterpreterTool ? undefined : "disabled"}
-              >
+              <Card variant={!!codeInterpreterTool ? undefined : "disabled"}>
                 <InputLayouts.Horizontal
                   name="code_interpreter"
                   title="Code Interpreter"
@@ -490,16 +488,14 @@ export default function AgentFormBody({
                 {/* MCP tools */}
                 {mcpServersWithTools.length > 0 && (
                   <GeneralLayouts.Section gap={0.5}>
-                    {mcpServersWithTools.map(
-                      ({ server, tools, isLoading }) => (
-                        <MCPServerCard
-                          key={server.id}
-                          server={server}
-                          tools={tools}
-                          isLoading={isLoading}
-                        />
-                      )
-                    )}
+                    {mcpServersWithTools.map(({ server, tools, isLoading }) => (
+                      <MCPServerCard
+                        key={server.id}
+                        server={server}
+                        tools={tools}
+                        isLoading={isLoading}
+                      />
+                    ))}
                   </GeneralLayouts.Section>
                 )}
 
@@ -567,7 +563,7 @@ export default function AgentFormBody({
                 <InputLayouts.Horizontal
                   name="llm_model"
                   title="Default Model"
-                  description="This model will be used by Meaningful AI by default in your chats."
+                  description="This model will be used by default in your chats."
                 >
                   <LLMSelector
                     name="llm_model"
@@ -613,8 +609,8 @@ export default function AgentFormBody({
                 <Text text03 secondaryBody>
                   Append a brief reminder to the prompt messages. Use this to
                   remind the agent if you find that it tends to forget certain
-                  instructions as the chat progresses. This should be brief
-                  and not interfere with the user messages.
+                  instructions as the chat progresses. This should be brief and
+                  not interfere with the user messages.
                 </Text>
               </GeneralLayouts.Section>
             </GeneralLayouts.Section>

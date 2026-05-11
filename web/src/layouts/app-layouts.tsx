@@ -465,9 +465,7 @@ function Footer() {
 
   const customFooterContent =
     settings?.enterpriseSettings?.custom_lower_disclaimer_content ||
-    `[PHX Holdings ${
-      settings?.webVersion || "dev"
-    }](https://www.meaningful-ai.com/) - ${APP_SLOGAN}`;
+    `PHX Holdings ${settings?.webVersion || "dev"} - ${APP_SLOGAN}`;
 
   return (
     <footer

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button as OpalButton } from "@opal/components";
 import { Hoverable } from "@opal/core";
 import { buildImgUrl } from "@/app/app/components/files/images/utils";
-import { Formik, Form, useFormikContext } from "formik";
+import { Formik, Form, getIn, useFormikContext } from "formik";
 import * as Yup from "yup";
 import { parseLlmDescriptor, structureValue } from "@/lib/llmConfig/utils";
 import { useLLMProviders } from "@/hooks/useLLMProviders";
@@ -41,10 +41,7 @@ import CustomAgentAvatar, {
 import InputAvatar from "@/refresh-components/inputs/InputAvatar";
 import SquareButton from "@/refresh-components/buttons/SquareButton";
 import { useAgents } from "@/hooks/useAgents";
-import {
-  createPersona,
-  PersonaUpsertParameters,
-} from "@/app/admin/agents/lib";
+import { createPersona, PersonaUpsertParameters } from "@/app/admin/agents/lib";
 import useMcpServersForAgentEditor from "@/hooks/useMcpServersForAgentEditor";
 import useOpenApiTools from "@/hooks/useOpenApiTools";
 import { useAvailableTools } from "@/hooks/useAvailableTools";
@@ -62,6 +59,57 @@ import { useUser } from "@/providers/UserProvider";
 // ---------------------------------------------------------------------------
 // Small sub-components (duplicated from AgentEditorPage)
 // ---------------------------------------------------------------------------
+
+const CREATE_AGENT_ERROR_FIELD_ORDER = [
+  "name",
+  "description",
+  "instructions",
+  ...STARTER_MESSAGES_EXAMPLES.map((_, index) => `starter_messages.${index}`),
+  "knowledge_cutoff_date",
+];
+
+function findFirstErrorPath(errors: unknown, parentPath = ""): string | null {
+  if (!errors) return null;
+  if (typeof errors === "string") return parentPath;
+
+  if (Array.isArray(errors)) {
+    for (let index = 0; index < errors.length; index++) {
+      const path = findFirstErrorPath(
+        errors[index],
+        parentPath ? `${parentPath}.${index}` : String(index)
+      );
+      if (path) return path;
+    }
+    return null;
+  }
+
+  if (typeof errors === "object") {
+    for (const [field, value] of Object.entries(errors)) {
+      const path = findFirstErrorPath(
+        value,
+        parentPath ? `${parentPath}.${field}` : field
+      );
+      if (path) return path;
+    }
+  }
+
+  return null;
+}
+
+function getFirstCreateAgentErrorPath(errors: Record<string, unknown>) {
+  for (const fieldName of CREATE_AGENT_ERROR_FIELD_ORDER) {
+    if (getIn(errors, fieldName)) return fieldName;
+  }
+  return findFirstErrorPath(errors);
+}
+
+function getElementForFormikField(fieldName: string) {
+  const selectorName = fieldName.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return (
+    document.getElementById(fieldName) ||
+    document.querySelector<HTMLElement>(`[name="${selectorName}"]`)
+  );
+}
 
 function FormWarningsEffect() {
   const { values, setStatus } = useFormikContext<{
@@ -379,10 +427,7 @@ export default function AgentWizardPage() {
         tools.forEach((tool) => {
           toolFields[`tool_${tool.id}`] = false;
         });
-        return [
-          `mcp_server_${server.id}`,
-          { enabled: false, ...toolFields },
-        ];
+        return [`mcp_server_${server.id}`, { enabled: false, ...toolFields }];
       })
     ),
     // OpenAPI tools
@@ -437,10 +482,7 @@ export default function AgentWizardPage() {
     replace_base_system_prompt: Yup.boolean(),
     reminders: Yup.string().optional(),
     ...Object.fromEntries(
-      mcpServers.map((server) => [
-        `mcp_server_${server.id}`,
-        Yup.object(),
-      ])
+      mcpServers.map((server) => [`mcp_server_${server.id}`, Yup.object()])
     ),
     ...Object.fromEntries(
       openApiTools.map((openApiTool) => [
@@ -622,7 +664,14 @@ export default function AgentWizardPage() {
         validateOnMount
         initialStatus={{ warnings: {} }}
       >
-        {({ isSubmitting, isValid, dirty, values, setFieldValue }) => {
+        {({
+          isSubmitting,
+          isValid,
+          values,
+          setFieldValue,
+          setFieldTouched,
+          validateForm,
+        }) => {
           const fileStatusMap = new Map(
             allRecentFiles.map((f) => [f.id, f.status])
           );
@@ -725,9 +774,12 @@ export default function AgentWizardPage() {
                 {/* Header Actions */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h1 className="text-2xl font-bold text-text-04">Create Agent</h1>
+                    <h1 className="text-2xl font-bold text-text-04">
+                      Create Agent
+                    </h1>
                     <p className="text-[14px] text-text-03 mt-1">
-                      Configure your AI agent using the Co-Pilot or manually below.
+                      Configure your AI agent using the Co-Pilot or manually
+                      below.
                     </p>
                   </div>
                   <div className="flex gap-3">
@@ -751,15 +803,41 @@ export default function AgentWizardPage() {
                       side="bottom"
                     >
                       <OpalButton
-                        disabled={isSubmitting || !isValid || hasUploadingFiles}
+                        disabled={isSubmitting || hasUploadingFiles}
                         type="button"
-                        onClick={() => {
-                          const formNode = document.getElementById("agent-wizard-form") as HTMLFormElement;
+                        onClick={async () => {
+                          const errors = await validateForm();
+                          const firstErrorPath =
+                            getFirstCreateAgentErrorPath(errors);
+
+                          if (firstErrorPath) {
+                            await setFieldTouched(firstErrorPath, true, false);
+
+                            window.requestAnimationFrame(() => {
+                              const fieldElement =
+                                getElementForFormikField(firstErrorPath);
+                              fieldElement?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "center",
+                              });
+                              fieldElement?.focus({ preventScroll: true });
+                            });
+                            return;
+                          }
+
+                          const formNode = document.getElementById(
+                            "agent-wizard-form"
+                          ) as HTMLFormElement | null;
                           if (formNode) {
                             if (typeof formNode.requestSubmit === "function") {
                               formNode.requestSubmit();
                             } else {
-                              formNode.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+                              formNode.dispatchEvent(
+                                new Event("submit", {
+                                  cancelable: true,
+                                  bubbles: true,
+                                })
+                              );
                             }
                           }
                         }}
@@ -773,14 +851,14 @@ export default function AgentWizardPage() {
                 <Form id="agent-wizard-form" className="flex flex-col gap-8">
                   {/* Top section: Chat */}
                   <div className="w-full flex flex-col max-h-[600px] bg-white rounded-2xl shadow-sm border border-border-01 overflow-hidden shrink-0 transition-all duration-300">
-                    <AgentBuilderChat
-                      onFieldsUpdated={handleFieldsUpdated}
-                    />
+                    <AgentBuilderChat onFieldsUpdated={handleFieldsUpdated} />
                   </div>
 
                   {/* Bottom section: Form body */}
                   <div className="w-full bg-white rounded-2xl shadow-sm border border-border-01 p-8 shrink-0">
-                    <h2 className="text-[16px] font-bold text-text-04 mb-6">Manual Configuration</h2>
+                    <h2 className="text-[16px] font-bold text-text-04 mb-6">
+                      Manual Configuration
+                    </h2>
                     <AgentFormBody
                       avatarEditor={<AgentIconEditor />}
                       allRecentFiles={allRecentFiles}
