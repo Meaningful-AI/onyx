@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 import Text from "@/refresh-components/texts/Text";
 import React, { useState, ReactNode, useCallback, useMemo, memo } from "react";
-import { SvgCheck, SvgCode, SvgCopy } from "@opal/icons";
+import { SvgCheck, SvgCode, SvgCopy, SvgEye } from "@opal/icons";
+import { useChatSessionStore } from "@/app/app/stores/useChatSessionStore";
 import copy from "copy-to-clipboard";
 
 interface CodeBlockProps {
@@ -24,6 +25,9 @@ export const CodeBlock = memo(function CodeBlock({
   noPadding = false,
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const updateCurrentHtmlPreview = useChatSessionStore(
+    (s) => s.updateCurrentHtmlPreview
+  );
 
   const language = useMemo(() => {
     return className
@@ -32,6 +36,15 @@ export const CodeBlock = memo(function CodeBlock({
       .map((cls) => cls.replace("language-", ""))
       .join(" ");
   }, [className]);
+
+  const handlePreview = useCallback(() => {
+    if (!codeText) return;
+    updateCurrentHtmlPreview({
+      visible: true,
+      source: { kind: "content", content: codeText },
+      title: "HTML Preview",
+    });
+  }, [codeText, updateCurrentHtmlPreview]);
 
   const handleCopy = useCallback(async () => {
     if (!codeText) return;
@@ -49,6 +62,17 @@ export const CodeBlock = memo(function CodeBlock({
       setTimeout(() => setCopied(false), 2000);
     }
   }, [codeText]);
+
+  const PreviewButton = () => (
+    <div className="cursor-pointer select-none" onMouseDown={handlePreview}>
+      <div className="flex items-center space-x-2">
+        <SvgEye height={14} width={14} stroke="currentColor" />
+        <Text as="p" secondaryMono>
+          Preview
+        </Text>
+      </div>
+    </div>
+  );
 
   const CopyButton = () => (
     <div
@@ -142,6 +166,7 @@ export const CodeBlock = memo(function CodeBlock({
                 className="my-auto"
               />
               <Text secondaryMono>{language}</Text>
+              {codeText && language === "html" && <PreviewButton />}
               {codeText && <CopyButton />}
             </div>
           )}

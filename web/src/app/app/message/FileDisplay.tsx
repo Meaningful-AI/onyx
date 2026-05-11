@@ -9,6 +9,11 @@ import CsvContent from "@/components/tools/CSVContent";
 import PreviewModal from "@/sections/modals/PreviewModal";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 import ExpandableContentWrapper from "@/components/tools/ExpandableContentWrapper";
+import { useChatSessionStore } from "@/app/app/stores/useChatSessionStore";
+
+function isHtmlFile(file: FileDescriptor): boolean {
+  return !!file.name?.toLowerCase().match(/\.html?$/);
+}
 
 interface FileContainerProps {
   children: ReactNode;
@@ -35,6 +40,9 @@ export default function FileDisplay({ files }: FileDisplayProps) {
   const [close, setClose] = useState(true);
   const [previewingFile, setPreviewingFile] = useState<FileDescriptor | null>(
     null
+  );
+  const updateCurrentHtmlPreview = useChatSessionStore(
+    (s) => s.updateCurrentHtmlPreview
   );
   const textFiles = files.filter(
     (file) =>
@@ -69,7 +77,16 @@ export default function FileDisplay({ files }: FileDisplayProps) {
             <Attachment
               key={file.id}
               fileName={file.name || file.id}
-              open={() => setPreviewingFile(file)}
+              open={
+                isHtmlFile(file)
+                  ? () =>
+                      updateCurrentHtmlPreview({
+                        visible: true,
+                        source: { kind: "file", fileId: file.id },
+                        title: file.name ?? "HTML Preview",
+                      })
+                  : () => setPreviewingFile(file)
+              }
             />
           ))}
         </FileContainer>

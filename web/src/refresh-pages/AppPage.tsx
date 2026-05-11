@@ -2,7 +2,14 @@
 
 import { redirect, useRouter, useSearchParams } from "next/navigation";
 import { personaIncludesRetrieval } from "@/app/app/services/lib";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast, useToastFromQuery } from "@/hooks/useToast";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { Section } from "@/layouts/general-layouts";
@@ -49,7 +56,9 @@ import {
   useCurrentChatState,
   useIsReady,
   useDocumentSidebarVisible,
+  useCurrentHtmlPreview,
 } from "@/app/app/stores/useChatSessionStore";
+import HtmlPreviewPanel from "@/refresh-components/HtmlPreviewPanel";
 import FederatedOAuthModal from "@/components/chat/FederatedOAuthModal";
 import ChatScrollContainer, {
   ChatScrollContainerHandle,
@@ -229,6 +238,23 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const [presentingDocument, setPresentingDocument] =
     useState<MinimalOnyxDocument | null>(null);
 
+  const handleSetPresentingDocument = useCallback(
+    (docOrUpdater: SetStateAction<MinimalOnyxDocument | null>) => {
+      const doc =
+        typeof docOrUpdater === "function" ? docOrUpdater(null) : docOrUpdater;
+      if (doc && /\.html?$/i.test(doc.semantic_identifier ?? "")) {
+        useChatSessionStore.getState().updateCurrentHtmlPreview({
+          visible: true,
+          source: { kind: "file", fileId: doc.document_id },
+          title: doc.semantic_identifier ?? "HTML Preview",
+        });
+      } else {
+        setPresentingDocument(docOrUpdater);
+      }
+    },
+    [setPresentingDocument]
+  );
+
   const llmManager = useLlmManager(currentChatSession ?? undefined, liveAgent);
 
   const {
@@ -360,6 +386,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const updateCurrentDocumentSidebarVisible = useChatSessionStore(
     (state) => state.updateCurrentDocumentSidebarVisible
   );
+  const htmlPreview = useCurrentHtmlPreview();
   const messageHistory = useCurrentMessageHistory();
   const messageTree = useCurrentMessageTree();
 
@@ -594,8 +621,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   }, [isNewSession, defaultAppMode, isSearch, resetInputBar, setAppMode]);
 
   const handleSearchDocumentClick = useCallback(
-    (doc: MinimalOnyxDocument) => setPresentingDocument(doc),
-    []
+    (doc: MinimalOnyxDocument) => handleSetPresentingDocument(doc),
+    [handleSetPresentingDocument]
   );
 
   const handleAppInputBarSubmit = useCallback(
@@ -649,6 +676,19 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     setTimeout(() => updateCurrentDocumentSidebarVisible(false), 300);
   }, [updateCurrentDocumentSidebarVisible]);
 
+  const desktopHtmlPreviewPanel = !settings.isMobile ? (
+    <div
+      className={cn(
+        "flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
+        htmlPreview.visible ? "w-[40rem]" : "w-[0rem]"
+      )}
+    >
+      <div className="h-full w-[40rem]">
+        <HtmlPreviewPanel />
+      </div>
+    </div>
+  ) : null;
+
   const desktopDocumentSidebar =
     retrievalEnabled && !settings.isMobile ? (
       <div
@@ -659,7 +699,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       >
         <div className="h-full w-[25rem]">
           <DocumentsSidebar
-            setPresentingDocument={setPresentingDocument}
+            setPresentingDocument={handleSetPresentingDocument}
             modal={false}
             closeSidebar={handleDesktopDocumentSidebarClose}
             selectedDocuments={selectedDocuments}
@@ -739,7 +779,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 for performance reasons that this stays true. MAKE SURE that all function
                 props are wrapped in useCallback. */}
                 <DocumentsSidebar
-                  setPresentingDocument={setPresentingDocument}
+                  setPresentingDocument={handleSetPresentingDocument}
                   modal
                   closeSidebar={handleMobileDocumentSidebarClose}
                   selectedDocuments={selectedDocuments}
@@ -803,7 +843,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                           deepResearchEnabledForCurrentWorkflow
                         }
                         currentMessageFiles={currentMessageFiles}
-                        setPresentingDocument={setPresentingDocument}
+                        setPresentingDocument={handleSetPresentingDocument}
                         onSubmit={onSubmit}
                         onMessageSelection={onMessageSelection}
                         stopGenerating={stopGenerating}
@@ -859,7 +899,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       <ProjectContextPanel
                         projectTokenCount={projectContextTokenCount}
                         availableContextTokens={availableContextTokens}
-                        setPresentingDocument={setPresentingDocument}
+                        setPresentingDocument={handleSetPresentingDocument}
                       />
                     </div>
                   )}
@@ -997,7 +1037,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         availableContextTokens={availableContextTokens}
                         selectedAgent={selectedAgent || liveAgent}
                         handleFileUpload={handleMessageSpecificFileUpload}
-                        setPresentingDocument={setPresentingDocument}
+                        setPresentingDocument={handleSetPresentingDocument}
                         // Intentionally enabled during name-only onboarding (showOnboarding=false)
                         // since LLM providers are already configured and the user can chat.
                         disabled={
@@ -1066,6 +1106,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       </AppLayouts.Root>
 
       {desktopDocumentSidebar}
+      {desktopHtmlPreviewPanel}
     </>
   );
 }
