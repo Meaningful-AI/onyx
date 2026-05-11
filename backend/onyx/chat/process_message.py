@@ -271,6 +271,7 @@ def extract_context_files(
     llm_max_context_window: int,
     reserved_token_count: int,
     db_session: Session,
+    use_file_reader_tool: bool | None = None,
     # Because the tokenizer is a generic tokenizer, the token count may be incorrect.
     # to account for this, the maximum context that is allowed for this function is
     # 60% of the LLM's max context window. The other benefit is that for projects with
@@ -289,6 +290,8 @@ def extract_context_files(
         llm_max_context_window: Maximum tokens allowed in the LLM context window
         reserved_token_count: Number of tokens to reserve for other content
         db_session: Database session
+        use_file_reader_tool: Whether metadata-only files can be exposed via
+            FileReaderTool instead of being loaded into prompt context.
         max_llm_context_percentage: Maximum percentage of the LLM context window to use.
     Returns:
         ExtractedContextFiles containing:
@@ -304,12 +307,18 @@ def extract_context_files(
     if not user_files:
         return _empty_extracted_context_files()
 
+    if use_file_reader_tool is None:
+        use_file_reader_tool = DISABLE_VECTOR_DB
+
+    def should_use_file_metadata_only(file_type: ChatFileType) -> bool:
+        return use_file_reader_tool and file_type.use_metadata_only()
+
     # Aggregate tokens for the file content that will be added
     # Skip tokens for those with metadata only
     aggregate_tokens = sum(
         uf.token_count or 0
         for uf in user_files
-        if not mime_type_to_chat_file_type(uf.file_type).use_metadata_only()
+        if not should_use_file_metadata_only(mime_type_to_chat_file_type(uf.file_type))
     )
     max_actual_tokens = (
         llm_max_context_window - reserved_token_count
@@ -323,7 +332,9 @@ def extract_context_files(
             overflow_tool_metadata = [
                 _build_tool_metadata(uf)
                 for uf in user_files
-                if mime_type_to_chat_file_type(uf.file_type).use_metadata_only()
+                if should_use_file_metadata_only(
+                    mime_type_to_chat_file_type(uf.file_type)
+                )
             ]
         return ExtractedContextFiles(
             file_texts=[],
@@ -352,7 +363,7 @@ def extract_context_files(
         uf = user_file_map.get(str(f.file_id))
         filename = f.filename or f"file_{f.file_id}"
 
-        if f.file_type.use_metadata_only():
+        if should_use_file_metadata_only(f.file_type):
             # Metadata-only files are not injected as full text.
             # Only the metadata is provided, with LLM using tools
             if not uf:
@@ -761,6 +772,15 @@ def build_chat_turn(
         db_session=db_session,
     )
 
+    has_file_reader_tool = DISABLE_VECTOR_DB and any(
+        tool.in_code_tool_id == FILE_READER_TOOL_ID
+        and (
+            new_msg_req.allowed_tool_ids is None
+            or tool.id in new_msg_req.allowed_tool_ids
+        )
+        for tool in persona.tools
+    )
+
     # Use the smallest context window across models for safety (harmless for N=1).
     llm_max_context_window = min(llm.config.max_input_tokens for llm in llms)
 
@@ -769,6 +789,7 @@ def build_chat_turn(
         llm_max_context_window=llm_max_context_window,
         reserved_token_count=reserved_token_count,
         db_session=db_session,
+        use_file_reader_tool=has_file_reader_tool,
     )
 
     search_params = determine_search_params(
@@ -837,10 +858,6 @@ def build_chat_turn(
 
     # Convert the chat history into a simple format that is free of any DB objects
     # and is easy to parse for the agent loop.
-    has_file_reader_tool = any(
-        tool.in_code_tool_id == FILE_READER_TOOL_ID for tool in persona.tools
-    )
-
     chat_history_result = convert_chat_history(
         chat_history=chat_history,
         files=files,

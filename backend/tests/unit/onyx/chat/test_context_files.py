@@ -12,6 +12,7 @@ from uuid import UUID
 from uuid import uuid4
 
 from onyx.chat.models import ExtractedContextFiles
+from onyx.chat.chat_utils import build_file_context
 from onyx.chat.process_message import determine_search_params
 from onyx.chat.process_message import extract_context_files
 from onyx.chat.process_message import resolve_context_user_files
@@ -185,6 +186,7 @@ class TestExtractContextFiles:
             llm_max_context_window=10000,
             reserved_token_count=0,
             db_session=MagicMock(),
+            use_file_reader_tool=True,
         )
 
         assert result.file_texts == ["file content"]
@@ -312,8 +314,6 @@ class TestExtractContextFiles:
         In production, UserFile.id (UUID PK) differs from UserFile.file_id
         (file-store path). Both pathways should produce the same file_id
         (UserFile.id) for FileReaderTool."""
-        from onyx.chat.chat_utils import build_file_context
-
         user_file_uuid = uuid4()
         file_store_path = f"user_files/{user_file_uuid}/data.csv"
 
@@ -340,6 +340,7 @@ class TestExtractContextFiles:
             llm_max_context_window=10000,
             reserved_token_count=0,
             db_session=MagicMock(),
+            use_file_reader_tool=True,
         )
         assert len(result.file_metadata_for_tool) == 1
         tool_metadata_file_id = result.file_metadata_for_tool[0].file_id
@@ -406,6 +407,7 @@ class TestExtractContextFiles:
             llm_max_context_window=10000,
             reserved_token_count=0,
             db_session=MagicMock(),
+            use_file_reader_tool=True,
         )
 
         # Text file fits (100 < 6000), so files should be loaded
@@ -442,6 +444,7 @@ class TestExtractContextFiles:
             llm_max_context_window=10000,
             reserved_token_count=0,
             db_session=MagicMock(),
+            use_file_reader_tool=True,
         )
 
         assert result.file_texts == ["hello"]
@@ -450,12 +453,46 @@ class TestExtractContextFiles:
         # TABULAR should not appear in file_metadata (that's for citation)
         assert all(m.filename != "data.csv" for m in result.file_metadata)
 
-    def test_overflow_with_vector_db_preserves_metadata_only_tool_metadata(
+    @patch("onyx.chat.process_message.extract_file_text")
+    @patch("onyx.chat.process_message.load_in_memory_chat_files")
+    def test_tabular_files_load_as_context_when_file_reader_unavailable(
+        self, mock_load: MagicMock, mock_extract: MagicMock
+    ) -> None:
+        tabular_file_id = str(uuid4())
+        tabular_uf = _make_user_file(
+            token_count=500, name="data.xlsx", file_id=tabular_file_id
+        )
+        tabular_uf.file_type = (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        mock_extract.return_value = "Sheet1\nAccount,OpEx\nCloud,1200"
+        mock_load.return_value = [
+            InMemoryChatFile(
+                file_id=tabular_file_id,
+                content=b"binary xlsx",
+                file_type=ChatFileType.TABULAR,
+                filename="data.xlsx",
+            ),
+        ]
+
+        result = extract_context_files(
+            user_files=[tabular_uf],
+            llm_max_context_window=10000,
+            reserved_token_count=0,
+            db_session=MagicMock(),
+            use_file_reader_tool=False,
+        )
+
+        assert result.file_texts == ["Sheet1\nAccount,OpEx\nCloud,1200"]
+        assert result.file_metadata_for_tool == []
+        assert len(result.file_metadata) == 1
+        assert result.file_metadata[0].filename == "data.xlsx"
+
+    def test_overflow_with_vector_db_does_not_emit_unusable_tool_metadata(
         self,
     ) -> None:
-        """When text files overflow with vector DB enabled, metadata-only files
-        should still be exposed via file_metadata_for_tool since they aren't
-        in the vector DB and would otherwise be inaccessible."""
+        """When the FileReaderTool is unavailable, overflow should not tell the
+        model to use file_metadata_for_tool entries that require that tool."""
         text_uf = _make_user_file(token_count=7000, name="bigfile.txt")
         tabular_uf = _make_user_file(token_count=500, name="data.xlsx")
         tabular_uf.file_type = (
@@ -472,9 +509,7 @@ class TestExtractContextFiles:
         # Text files overflow → search filter enabled
         assert result.use_as_search_filter is True
         assert result.file_texts == []
-        # TABULAR file should still be in tool metadata
-        assert len(result.file_metadata_for_tool) == 1
-        assert result.file_metadata_for_tool[0].filename == "data.xlsx"
+        assert result.file_metadata_for_tool == []
 
     @patch("onyx.chat.process_message.DISABLE_VECTOR_DB", True)
     def test_overflow_no_vector_db_includes_all_files_in_tool_metadata(self) -> None:
@@ -497,6 +532,25 @@ class TestExtractContextFiles:
         assert len(result.file_metadata_for_tool) == 2
         filenames = {m.filename for m in result.file_metadata_for_tool}
         assert filenames == {"bigfile.txt", "data.xlsx"}
+
+
+# ===========================================================================
+# build_file_context
+# ===========================================================================
+
+
+class TestBuildFileContext:
+    def test_tabular_file_with_extracted_text_is_injected(self) -> None:
+        result = build_file_context(
+            tool_file_id=str(uuid4()),
+            filename="data.xlsx",
+            file_type=ChatFileType.TABULAR,
+            content_text="Sheet1\nAccount,OpEx\nCloud,1200",
+            token_count=42,
+        )
+
+        assert "Sheet1" in result.message.message
+        assert "read_file" not in result.message.message
 
 
 # ===========================================================================
