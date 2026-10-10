@@ -166,11 +166,11 @@ function buildItems(
     }
   }
 
-  // 8. Upgrade Plan (admin only, no subscription)
+  // 8. Billing and license (admin only, no subscription)
   if (!isCurator && !hasSubscription) {
     items.push({
       section: SECTIONS.UNLABELED,
-      name: "Upgrade Plan",
+      name: "Billing & License",
       icon: SvgArrowUpCircle,
       link: ADMIN_ROUTES.BILLING.path,
     });
@@ -229,7 +229,7 @@ function AdminSidebarInner({
   const { data: licenseData, isLoading: licenseLoading } = useLicense();
   const isCurator =
     user?.role === UserRole.CURATOR || user?.role === UserRole.GLOBAL_CURATOR;
-  // Default to true while loading to avoid flashing "Upgrade Plan"
+  // Default to true while loading to avoid flashing billing/license navigation.
   const hasSubscriptionOrLicense =
     billingLoading || licenseLoading
       ? true

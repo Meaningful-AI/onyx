@@ -16,6 +16,9 @@ export const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8080";
 export const DOCS_BASE_URL = "https://docs.onyx.app";
 export const DOCS_ADMINS_PATH = `${DOCS_BASE_URL}/admins`;
 
+export const SUPPORT_EMAIL =
+  process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "bryantb@bemeaningful.ai";
+
 export const MCP_INTERNAL_URL =
   process.env.MCP_INTERNAL_URL || "http://127.0.0.1:8090";
 

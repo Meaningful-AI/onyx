@@ -4,8 +4,6 @@ import AuthFlowContainer from "@/components/auth/AuthFlowContainer";
 import Text from "@/refresh-components/texts/Text";
 import { Button } from "@opal/components";
 
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
-
 // Maps raw IdP/OAuth error codes to user-friendly messages.
 // If the message is a known code, we replace it; otherwise show it as-is.
 const ERROR_CODE_MESSAGES: Record<string, string> = {
@@ -71,17 +69,8 @@ function AuthErrorContent({ message: rawMessage }: AuthErrorContentProps) {
         </Button>
 
         <Text mainContentBody text04>
-          {NEXT_PUBLIC_CLOUD_ENABLED ? (
-            <>
-              If you continue to experience problems, please reach out to the
-              PHX Holdings team at{" "}
-              <a href="mailto:support@onyx.app" className="text-action-link-05">
-                support@onyx.app
-              </a>
-            </>
-          ) : (
-            "If you continue to experience problems, please reach out to your system administrator for assistance."
-          )}
+          If you continue to experience problems, please reach out to your
+          system administrator for assistance.
         </Text>
       </div>
     </AuthFlowContainer>

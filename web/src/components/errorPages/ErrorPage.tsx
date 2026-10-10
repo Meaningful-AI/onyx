@@ -14,8 +14,8 @@ export default function Error() {
       </div>
 
       <Text as="p" text03>
-        It seems there was a problem loading your PHX Holdings settings. This could be
-        due to a configuration issue or incomplete setup.
+        It seems there was a problem loading your PHX Holdings settings. This
+        could be due to a configuration issue or incomplete setup.
       </Text>
 
       <Text as="p" text03>
@@ -33,16 +33,7 @@ export default function Error() {
       </Text>
 
       <Text as="p" text03>
-        Need help? Join our{" "}
-        <a
-          className="text-action-link-05"
-          href="https://discord.gg/4NA5SbzrWb"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Discord community
-        </a>{" "}
-        for support.
+        Need help? Contact your PHX Holdings system administrator.
       </Text>
     </ErrorPageLayout>
   );

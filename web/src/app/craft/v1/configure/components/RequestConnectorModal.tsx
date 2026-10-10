@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+import { NEXT_PUBLIC_CLOUD_ENABLED, SUPPORT_EMAIL } from "@/lib/constants";
 
 interface RequestConnectorModalProps {
   open: boolean;
@@ -181,10 +181,10 @@ export default function RequestConnectorModal({
                   <Text mainUiBody text04 className="text-center">
                     Email your request to{" "}
                     <a
-                      href="mailto:hello@onyx.app?subject=PHX Holdings Craft Connector Request"
+                      href={`mailto:${SUPPORT_EMAIL}?subject=PHX Holdings Craft Connector Request`}
                       className="text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      hello@onyx.app
+                      {SUPPORT_EMAIL}
                     </a>
                   </Text>
                 </div>

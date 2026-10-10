@@ -4,10 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import ErrorPageLayout from "@/components/errorPages/ErrorPageLayout";
 import { Button } from "@opal/components";
-import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { logout } from "@/lib/user";
 import { loadStripe } from "@stripe/stripe-js";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+import { NEXT_PUBLIC_CLOUD_ENABLED, SUPPORT_EMAIL } from "@/lib/constants";
 import { useLicense } from "@/hooks/useLicense";
 import { useSettingsContext } from "@/providers/SettingsProvider";
 import { ApplicationStatus } from "@/interfaces/settings";
@@ -56,7 +55,7 @@ export default function AccessRestricted() {
       used_seats != null && seat_count != null
         ? ` (${used_seats} users / ${seat_count} seats)`
         : "";
-    return `Your organization has exceeded its licensed seat count${counts}. Access is restricted until the number of users is reduced or your license is upgraded.`;
+    return `Your organization has exceeded its licensed seat count${counts}. Access is restricted until the number of users is reduced or your license is updated.`;
   }
 
   const initialModalMessage = isSeatLimitExceeded
@@ -104,7 +103,7 @@ export default function AccessRestricted() {
             <Link className={linkClassName} href="/admin/users">
               User Management
             </Link>{" "}
-            page or upgrade your license on the{" "}
+            page or manage your license on the{" "}
             <Link className={linkClassName} href="/admin/billing">
               Admin Billing
             </Link>{" "}
@@ -125,8 +124,9 @@ export default function AccessRestricted() {
       ) : NEXT_PUBLIC_CLOUD_ENABLED ? (
         <>
           <Text text03>
-            To reinstate your access and continue benefiting from PHX Holdings&apos;s
-            powerful features, please update your payment information.
+            To reinstate your access and continue benefiting from PHX
+            Holdings&apos;s powerful features, please update your payment
+            information.
           </Text>
 
           <Text text03>
@@ -157,7 +157,7 @@ export default function AccessRestricted() {
           <Text text03>
             {hadPreviousLicense
               ? "To reinstate your access and continue using PHX Holdings, please contact your system administrator to renew your license."
-              : "To get started, please contact your system administrator to obtain an Enterprise license."}
+              : "To get started, please contact your system administrator to obtain access."}
           </Text>
 
           <Text text03>
@@ -166,9 +166,9 @@ export default function AccessRestricted() {
               Admin Billing
             </Link>{" "}
             page to {hadPreviousLicense ? "renew" : "activate"} your license,
-            sign up through Stripe or reach out to{" "}
-            <a className={linkClassName} href="mailto:support@onyx.app">
-              support@onyx.app
+            sign up through Stripe, or reach out to{" "}
+            <a className={linkClassName} href={`mailto:${SUPPORT_EMAIL}`}>
+              {SUPPORT_EMAIL}
             </a>{" "}
             for billing assistance.
           </Text>
@@ -187,14 +187,7 @@ export default function AccessRestricted() {
       )}
 
       <Text text03>
-        Need help? Join our{" "}
-        <InlineExternalLink
-          className={linkClassName}
-          href="https://discord.gg/4NA5SbzrWb"
-        >
-          Discord community
-        </InlineExternalLink>{" "}
-        for support.
+        Need help? Contact your PHX Holdings system administrator.
       </Text>
     </ErrorPageLayout>
   );

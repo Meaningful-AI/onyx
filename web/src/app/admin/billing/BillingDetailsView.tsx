@@ -31,7 +31,7 @@ import {
 } from "@/lib/billing/svc";
 import { formatDateShort } from "@/lib/dateUtils";
 import { humanReadableFormatShort } from "@/lib/time";
-import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+import { NEXT_PUBLIC_CLOUD_ENABLED, SUPPORT_EMAIL } from "@/lib/constants";
 import useUsers from "@/hooks/useUsers";
 
 // ----------------------------------------------------------------------------
@@ -237,7 +237,7 @@ function SubscriptionCard({
               Your plan is managed through sales.
               <br />
               <a
-                href="mailto:support@onyx.app?subject=Billing%20change%20request"
+                href={`mailto:${SUPPORT_EMAIL}?subject=Billing%20change%20request`}
                 className="underline"
               >
                 Contact billing

@@ -1,5 +1,5 @@
 /**
- * Onyx Chat Widget - Main Component
+ * PHX Holdings Chat Widget - Main Component
  * Orchestrates launcher/inline modes and manages widget lifecycle
  */
 
@@ -682,11 +682,11 @@ export class OnyxChatWidget extends LitElement {
         <div class="powered-by">
           Powered by
           <a
-            href="https://onyx.app"
+            href="https://www.meaningful-ai.com/"
             target="_blank"
             rel="noopener noreferrer"
             style="text-decoration: underline;"
-            >Onyx</a
+            >Meaningful AI</a
           >
         </div>
       </div>

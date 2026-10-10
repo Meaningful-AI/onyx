@@ -1480,10 +1480,10 @@ function AccountsAccessSettings() {
               <Card>
                 <Section flexDirection="row" justifyContent="between">
                   <Text text03 secondaryBody>
-                    Access tokens require an active paid subscription.
+                    Access tokens require administrator-enabled API access.
                   </Text>
                   <Button prominence="secondary" href="/admin/billing">
-                    Upgrade Plan
+                    Manage License
                   </Button>
                 </Section>
               </Card>
@@ -1571,7 +1571,8 @@ function FederatedConnectorCard({
         >
           <Section gap={0.5} alignItems="start">
             <Text>
-              PHX Holdings will no longer be able to access or search content from your{" "}
+              PHX Holdings will no longer be able to access or search content
+              from your{" "}
               <Text className="!font-bold">{sourceMetadata.displayName}</Text>{" "}
               account.
             </Text>
