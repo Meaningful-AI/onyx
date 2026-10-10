@@ -354,6 +354,126 @@ status code is dynamic (comes from the upstream response), use `status_code_over
 raise OnyxError(OnyxErrorCode.BAD_GATEWAY, detail, status_code_override=e.response.status_code)
 ```
 
+## PHX Production Operations
+
+### Instance Details
+
+- **AWS Profile:** `meaningful-ai`
+- **Instance:** `i-0ea8b999ea9a7d908` (onyx-phx-prod, `98.88.126.60`, m7g.xlarge)
+- **Access:** AWS SSM (no SSH key needed)
+- **Repo on server:** `/data/onyx/app/` on `client/phx` branch
+- **Compose file:** `deployment/docker_compose/docker-compose.prod.yml`
+- **Project name:** `onyx-stack`
+- **EIP:** `eipalloc-01e9ab82557001e66` → `98.88.126.60`
+
+### Running Database Queries
+
+The Postgres database runs inside a Docker container on the EC2 instance. Queries are sent
+via AWS SSM.
+
+```bash
+# Send a query
+AWS_PROFILE=meaningful-ai aws ssm send-command \
+  --instance-ids i-0ea8b999ea9a7d908 \
+  --document-name "AWS-RunShellScript" \
+  --parameters '{"commands":["docker exec onyx-stack-relational_db-1 psql -U postgres -c \"<YOUR SQL HERE>\""]}' \
+  --query 'Command.CommandId' --output text
+
+# Check the result (replace <COMMAND_ID> with the output from above)
+AWS_PROFILE=meaningful-ai aws ssm get-command-invocation \
+  --command-id <COMMAND_ID> \
+  --instance-id i-0ea8b999ea9a7d908 \
+  --query 'StandardOutputContent' --output text
+```
+
+For an interactive session (useful for ad-hoc queries):
+
+```bash
+# Start an SSM session on the instance
+AWS_PROFILE=meaningful-ai aws ssm start-session --target i-0ea8b999ea9a7d908
+
+# Then on the instance, open an interactive psql shell
+docker exec -it onyx-stack-relational_db-1 psql -U postgres
+```
+
+Common queries:
+
+```sql
+-- List all users
+SELECT email, role, is_active, is_verified FROM "user";
+
+-- Check a specific user
+SELECT email, role, is_active, is_verified FROM "user" WHERE email = 'someone@example.com';
+
+-- Promote a user to admin
+UPDATE "user" SET role = 'ADMIN', is_verified = true WHERE email = 'someone@example.com';
+```
+
+### Deployment
+
+#### Deploy Steps
+
+```bash
+# 1. Push code to remote
+git push origin client/phx
+
+# 2. Pull + clean source on server
+# CRITICAL: git clean -fd removes untracked files that git reset --hard misses
+AWS_PROFILE=meaningful-ai aws ssm send-command \
+  --instance-ids i-0ea8b999ea9a7d908 \
+  --document-name "AWS-RunShellScript" \
+  --parameters '{"commands":["cd /data/onyx/app && git fetch origin && git reset --hard origin/client/phx && git clean -fd web/ && git status --short | head -10"]}' \
+  --query 'Command.CommandId' --output text
+
+# 3. Build images (use --no-cache when files were removed)
+# Include whichever services changed: api_server, web_server, background
+AWS_PROFILE=meaningful-ai aws ssm send-command \
+  --instance-ids i-0ea8b999ea9a7d908 \
+  --document-name "AWS-RunShellScript" \
+  --parameters '{"commands":["cd /data/onyx/app/deployment/docker_compose && docker compose -f docker-compose.prod.yml -p onyx-stack build api_server web_server background > /tmp/build.log 2>&1; echo EXIT_CODE=$?; tail -20 /tmp/build.log"]}' \
+  --query 'Command.CommandId' --output text \
+  --timeout-seconds 600
+
+# 4. Swap containers and restart nginx
+AWS_PROFILE=meaningful-ai aws ssm send-command \
+  --instance-ids i-0ea8b999ea9a7d908 \
+  --document-name "AWS-RunShellScript" \
+  --parameters '{"commands":["cd /data/onyx/app/deployment/docker_compose && docker compose -f docker-compose.prod.yml -p onyx-stack up -d --force-recreate --no-deps api_server web_server background 2>&1; sleep 10; docker compose -f docker-compose.prod.yml -p onyx-stack stop nginx && docker compose -f docker-compose.prod.yml -p onyx-stack up -d nginx 2>&1; sleep 20; curl -s -o /dev/null -w \"HTTP %{http_code}\" http://localhost 2>&1; echo"]}' \
+  --query 'Command.CommandId' --output text
+
+# 5. Verify external access
+curl -s -o /dev/null -w "HTTP %{http_code}" --connect-timeout 10 --max-time 15 http://98.88.126.60/
+```
+
+#### Which services to rebuild
+
+- **Backend code changes** (`backend/`): rebuild `api_server` and `background` (they share the same image)
+- **Frontend code changes** (`web/`): rebuild `web_server`
+- **Both**: rebuild all three
+
+#### Critical Rules
+
+- **NEVER use `docker compose down`** — destroys the Docker network, breaks external access permanently until reboot
+- **Always `git clean -fd web/`** after `git reset --hard` — reset only reverts tracked files, untracked files persist and pollute the build
+- **Always use `--no-cache`** when files have been removed from the repo — Docker layer cache serves stale code
+- **Use `--force-recreate --no-deps`** to swap individual containers without tearing down the network
+- **Always restart nginx** after swapping containers — nginx caches DNS for container IPs
+- **Always verify external access** from local machine before reporting success
+- **Redirect build output** to a file (`> /tmp/build.log 2>&1`) — SSM doesn't capture stderr well
+
+#### Troubleshooting
+
+- **External access broken**: Reboot instance (`aws ec2 reboot-instances --instance-ids i-0ea8b999ea9a7d908`), then wait for containers to auto-start
+- **nginx 502**: Restart nginx (`stop nginx` then `up -d nginx`)
+- **Stale code after build**: Source had untracked files — run `git clean -fd` then rebuild with `--no-cache`
+- **nginx duplicate upstream crash**: Fixed by `NGINX_ENVSUBST_TEMPLATE_DIR=/dev/null` in compose
+
+### Settings (KV Store)
+
+Admin settings (like `max_tool_calls`) are stored in a Redis-backed KV store, NOT in Postgres.
+Adding new fields to the `Settings` model in `backend/onyx/server/settings/models.py` does NOT
+require a database migration — Pydantic handles missing keys with defaults automatically.
+
 ## Best Practices
 
 In addition to the other content in this file, best practices for contributing
